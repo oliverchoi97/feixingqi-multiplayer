@@ -18,6 +18,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -402,8 +406,28 @@ input:focus {
   height: 100%;
 }
 
+.board-art {
+  pointer-events: none;
+  z-index: 0;
+}
+
 #board {
   cursor: pointer;
+  z-index: 1;
+  touch-action: manipulation;
+}
+
+.piece-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  width: 100%;
+}
+
+.piece-picks .btn {
+  padding: 8px 12px;
+  font-size: 0.86rem;
 }
 
 .modal {

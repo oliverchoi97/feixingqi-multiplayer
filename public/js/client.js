@@ -15,6 +15,9 @@ let lobby = null;
 let game = null;
 let readyOn = false;
 let moving = false;
+let diceTimer = 0;
+let movingTimer = 0;
+let dicePlaying = false;
 
 const params = new URLSearchParams(location.search);
 if (params.get("room")) $("join-code").value = params.get("room").toUpperCase();
@@ -59,11 +62,11 @@ $("btn-roll").onclick = () => {
 };
 
 $("board").addEventListener("click", (e) => {
-  if (!game?.yourTurn || game.action !== "select") return;
+  if (!game?.yourTurn || game.action !== "select" || moving) return;
   const hit = board.hitTest(e.clientX, e.clientY);
   if (!hit || hit.color !== game.yourColor) return;
   if (!game.legalPieceIds.includes(hit.id)) return;
-  socket.emit("move", hit.id);
+  sendMove(hit.id);
 });
 
 socket.on("joined", (payload) => {
@@ -86,30 +89,32 @@ socket.on("state", (view) => {
   game = view;
   show("game");
   renderGame(view);
-  board.setState(view, view.legalPieceIds || []);
+  if (!moving) board.setState(view, view.legalPieceIds || []);
+  else board.setState(view, []);
   if (view.phase === "ended") showWinner(view);
+  if (!moving && !dicePlaying) tryAutoMove();
 });
 
 socket.on("rolled", ({ roll, threeSixes }) => {
   animateDice(roll, () => {
     setDice(roll);
     if (threeSixes) toast("三次六返大陸！");
-    if (game?.yourTurn && game.action === "select" && game.legalPieceIds?.length === 1) {
-      socket.emit("move", game.legalPieceIds[0]);
-    }
+    tryAutoMove();
   });
 });
 
 socket.on("moved", ({ sim }) => {
-  moving = true;
-  $("btn-roll").disabled = true;
-  board.playMove(sim, () => {
-    moving = false;
-    if (game) renderGame(game);
-  });
+  beginMoving(sim);
 });
 
-socket.on("errorMsg", (msg) => toast(msg));
+socket.on("errorMsg", (msg) => {
+  toast(msg);
+  moving = false;
+  if (game) {
+    renderGame(game);
+    board.setState(game, game.legalPieceIds || []);
+  }
+});
 
 if (me.playerId && params.get("room")) {
   saveNick();
@@ -158,9 +163,10 @@ function renderGame(view) {
         ? `輪到你（${meta.nameZh}）`
         : `輪到${meta.nameZh}方`;
   $("btn-roll").disabled = !(yours && view.action === "roll") || moving;
+  renderPiecePicks(view);
   $("roll-hint").textContent =
     view.action === "select" && yours
-      ? "點選高亮的飛機走棋。"
+      ? "點選高亮的飛機，或按下方按鈕走棋。"
       : view.lastRoll
         ? `上一骰：${view.lastRoll}${view.consecutiveSixes ? `（連續 ${view.consecutiveSixes} 次 6）` : ""}`
         : "輪到你時按下擲骰。";
@@ -196,16 +202,81 @@ function showWinner(view) {
     .join("");
 }
 
+function renderPiecePicks(view) {
+  const box = $("piece-picks");
+  const ids = view.yourTurn && view.action === "select" && !moving ? view.legalPieceIds || [] : [];
+  if (!ids.length) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  box.hidden = false;
+  box.innerHTML = ids
+    .map((id) => {
+      const plane = view.planes[view.yourColor][id];
+      const label = plane.loc === "hangar" ? `起飛 ${id + 1}` : `飛機 ${id + 1}`;
+      return `<button class="btn" type="button" data-piece="${id}">${label}</button>`;
+    })
+    .join("");
+  box.querySelectorAll("button").forEach((btn) => {
+    btn.onclick = () => sendMove(Number(btn.dataset.piece));
+  });
+}
+
+function tryAutoMove() {
+  if (!game?.yourTurn || game.action !== "select" || moving) return;
+  const ids = game.legalPieceIds || [];
+  if (!ids.length) return;
+  if (ids.length === 1) {
+    sendMove(ids[0]);
+    return;
+  }
+  const planes = game.planes[game.yourColor];
+  if (ids.every((id) => planes[id]?.loc === "hangar")) sendMove(ids[0]);
+}
+
+function sendMove(pieceId) {
+  if (moving) return;
+  moving = true;
+  $("btn-roll").disabled = true;
+  $("piece-picks").hidden = true;
+  board.setState(game, []);
+  clearTimeout(movingTimer);
+  movingTimer = setTimeout(() => {
+    moving = false;
+    if (game) renderGame(game);
+  }, 4500);
+  socket.emit("move", pieceId);
+}
+
+function beginMoving(sim) {
+  moving = true;
+  $("btn-roll").disabled = true;
+  clearTimeout(movingTimer);
+  movingTimer = setTimeout(() => {
+    moving = false;
+    if (game) renderGame(game);
+  }, 4500);
+  board.playMove(sim, () => {
+    clearTimeout(movingTimer);
+    moving = false;
+    if (game) renderGame(game);
+  });
+}
+
 function animateDice(value, done) {
   const el = $("dice");
   el.classList.add("rolling");
+  dicePlaying = true;
   let n = 0;
-  const iv = setInterval(() => {
+  clearInterval(diceTimer);
+  diceTimer = setInterval(() => {
     setDice(1 + Math.floor(Math.random() * 6));
     if (++n > 8) {
-      clearInterval(iv);
+      clearInterval(diceTimer);
       el.classList.remove("rolling");
       setDice(value);
+      dicePlaying = false;
       done?.();
     }
   }, 70);

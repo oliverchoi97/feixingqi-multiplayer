@@ -32,20 +32,33 @@ export class BoardView {
   }
 
   playMove(sim, onDone) {
-    const pts = sim.path.map((wp) => {
-      const [x, y] = waypointScreenPos(wp);
-      return { x, y, kind: wp.kind, loc: wp.loc };
-    });
-    const hangarStart = sim.path[0]?.kind === "takeoff"
-      ? pieceScreenPos({ loc: "hangar", slot: sim.path[0].slot ?? sim.pieceId }, sim.color)
-      : null;
-    if (hangarStart) pts.unshift({ x: hangarStart[0], y: hangarStart[1], kind: "from" });
+    const pts = [];
+    for (const wp of sim.path || []) {
+      const pos = waypointScreenPos(wp);
+      if (!pos) continue;
+      pts.push({ x: pos[0], y: pos[1], kind: wp.kind, loc: wp.loc });
+    }
+    if (sim.path?.[0]?.kind === "takeoff") {
+      const hangarStart = pieceScreenPos(
+        { loc: "hangar", slot: sim.path[0].slot ?? sim.pieceId },
+        sim.color
+      );
+      if (hangarStart) pts.unshift({ x: hangarStart[0], y: hangarStart[1], kind: "from" });
+    }
+    const finish = () => {
+      this.anim = null;
+      onDone?.();
+    };
+    if (pts.length < 1) {
+      finish();
+      return;
+    }
     this.anim = {
       color: sim.color,
       pieceId: sim.pieceId,
       pts,
       t0: performance.now(),
-      duration: Math.max(280, pts.length * 170),
+      duration: Math.max(320, pts.length * 180),
       captures: sim.captured || [],
       onDone,
       done: false,
@@ -55,18 +68,20 @@ export class BoardView {
   hitTest(clientX, clientY) {
     if (!this.state) return null;
     const rect = this.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
     const x = ((clientX - rect.left) / rect.width) * 950;
     const y = ((clientY - rect.top) / rect.height) * 950;
     let best = null;
-    let bestD = 28;
-    for (const color of COLORS) {
-      for (const plane of this.state.planes[color]) {
-        const [px, py] = this.drawPos(plane, color);
-        const d = Math.hypot(px - x, py - y);
-        if (d < bestD) {
-          bestD = d;
-          best = { color, id: plane.id };
-        }
+    let bestD = 56;
+    const color = this.state.yourColor;
+    const list = color ? this.state.planes[color] : [];
+    for (const plane of list) {
+      const pos = this.drawPos(plane, color);
+      if (!pos) continue;
+      const d = Math.hypot(pos[0] - x, pos[1] - y);
+      if (d < bestD) {
+        bestD = d;
+        best = { color, id: plane.id };
       }
     }
     return best;
@@ -99,9 +114,13 @@ export class BoardView {
   }
 
   loop() {
-    this.draw();
+    try {
+      this.draw();
+    } catch (err) {
+      console.error(err);
+    }
     if (this.anim && !this.anim.done) {
-      const t = (performance.now() - this.anim.t0) / this.anim.duration;
+      const t = (performance.now() - this.anim.t0) / Math.max(1, this.anim.duration);
       if (t >= 1) {
         this.anim.done = true;
         const cb = this.anim.onDone;
@@ -122,8 +141,9 @@ export class BoardView {
     const groups = [];
     for (const color of COLORS) {
       for (const plane of this.state.planes[color]) {
-        const [x, y] = this.drawPos(plane, color);
-        groups.push({ color, plane, x, y, key: `${plane.loc}:${plane.index}:${plane.slot}` });
+        const pos = this.drawPos(plane, color);
+        if (!pos) continue;
+        groups.push({ color, plane, x: pos[0], y: pos[1] });
       }
     }
 
@@ -161,9 +181,12 @@ export class BoardView {
     if (!this.state?.yourTurn || !this.legal.size) return;
     const { ctx } = this;
     const color = this.state.yourColor;
+    if (!color || !this.state.planes[color]) return;
     for (const plane of this.state.planes[color]) {
       if (!this.legal.has(plane.id)) continue;
-      const [x, y] = pieceScreenPos(plane, color);
+      const pos = pieceScreenPos(plane, color);
+      if (!pos) continue;
+      const [x, y] = pos;
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 180);
       ctx.beginPath();
       ctx.arc(x, y, 26 + pulse * 4, 0, Math.PI * 2);
@@ -225,6 +248,7 @@ function heading(g, state) {
   const i = g.plane.index;
   const a = TRACK[i];
   const b = TRACK[(i + 1) % 52];
+  if (!a || !b) return 0;
   return Math.atan2(b[1] - a[1], b[0] - a[0]);
 }
 
