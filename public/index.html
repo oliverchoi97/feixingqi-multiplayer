@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>飛行棋 · 多人連線</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <div id="toast" hidden></div>
+
+    <section id="screen-home" class="screen">
+      <div class="home-card">
+        <p class="eyebrow">經典中國飛行棋</p>
+        <h1>飛行棋</h1>
+        <p class="lede">
+          四人環形跑道、同色跳格、虛線飛航。建立房間邀請好友，空位由電腦補齊。
+        </p>
+        <label class="field">
+          <span>暱稱</span>
+          <input id="nickname" maxlength="12" placeholder="怎麼稱呼你" autocomplete="nickname" />
+        </label>
+        <div class="home-actions">
+          <button id="btn-create" class="btn primary" type="button">建立房間</button>
+          <div class="join-row">
+            <input
+              id="join-code"
+              maxlength="4"
+              placeholder="房間代碼"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button id="btn-join" class="btn" type="button">加入</button>
+          </div>
+        </div>
+        <p class="hint">規則採傳統玩法：擲 6 起飛、同色跳四格、虛線飛航、終點反彈。</p>
+      </div>
+    </section>
+
+    <section id="screen-lobby" class="screen" hidden>
+      <div class="lobby-card">
+        <header class="lobby-head">
+          <div>
+            <p class="eyebrow">候機室</p>
+            <h2>房間 <span id="lobby-code">----</span></h2>
+          </div>
+          <div class="lobby-share">
+            <button id="btn-copy" class="btn ghost" type="button">複製連結</button>
+            <button id="btn-leave" class="btn ghost" type="button">離開</button>
+          </div>
+        </header>
+        <p class="lede tight" id="lobby-status">等待玩家準備。未入座的顏色開局後由電腦執飛。</p>
+        <div id="lobby-seats" class="seats"></div>
+        <div class="lobby-actions">
+          <button id="btn-ready" class="btn primary" type="button">準備</button>
+          <button id="btn-start" class="btn" type="button" hidden>開始遊戲</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-game" class="screen game-screen" hidden>
+      <aside class="panel">
+        <div class="panel-top">
+          <div>
+            <p class="eyebrow">房間</p>
+            <strong id="game-code" class="mono">----</strong>
+          </div>
+          <div id="turn-banner" class="turn-banner">準備起飛</div>
+        </div>
+        <div id="player-list" class="player-list"></div>
+        <div class="dice-block">
+          <div class="dice" id="dice" data-face="1" aria-hidden="true">
+            <div class="dice-face" data-v="1"></div>
+            <div class="dice-face" data-v="2"></div>
+            <div class="dice-face" data-v="3"></div>
+            <div class="dice-face" data-v="4"></div>
+            <div class="dice-face" data-v="5"></div>
+            <div class="dice-face" data-v="6"></div>
+          </div>
+          <button id="btn-roll" class="btn primary wide" type="button" disabled>擲骰</button>
+          <p id="roll-hint" class="hint">輪到你時按下擲骰。若有多架可走，請點選棋盤上的飛機。</p>
+        </div>
+        <ol id="log" class="log"></ol>
+        <button id="btn-rules" class="btn ghost wide" type="button">規則說明</button>
+      </aside>
+      <div class="board-wrap">
+        <img class="board-art" src="/board.svg" alt="飛行棋棋盤" />
+        <canvas id="board" width="950" height="950"></canvas>
+      </div>
+    </section>
+
+    <div id="modal" class="modal" hidden>
+      <div class="modal-card">
+        <h3>傳統飛行棋規則</h3>
+        <div class="rules">
+          <p>每方 4 架飛機，停在角落機場。必須擲出 <strong>6</strong> 才能起飛到起飛格；若已有飛機在外，6 點可起飛或走現有飛機。</p>
+          <p>擲出 6 走完後可再擲。同一回合連續三次 6：該玩家一架仍在場上的飛機返回機場（三次六返大陸）。</p>
+          <p>順時針沿外圈走。停在自己顏色的格子（終點跑道除外）可再跳 4 格。</p>
+          <p>若擲骰後正好停在己色長虛線起點，沿虛線飛到對面，再跳 4 格。若是「跳」到虛線起點，仍可飛過，但不再加跳 4 格。飛航途中壓到的敵機（含對家終點跑道交會格）一律遣返機場。</p>
+          <p>停在敵機上可吃掉該格全部敵機（含迭子）。己方飛機可疊在同一格，各自移動；敵人踩上則整疊遣返。</p>
+          <p>走到己色拐彎箭頭後轉入中央大箭頭。步數超過終點則在終點反彈。剛好走到終點的飛機完成飛行，面朝下置回機場。最先完成 4 架者獲勝。</p>
+        </div>
+        <button id="btn-close-rules" class="btn primary" type="button">關閉</button>
+      </div>
+    </div>
+
+    <div id="winner-modal" class="modal" hidden>
+      <div class="modal-card winner">
+        <p class="eyebrow">完賽</p>
+        <h3 id="winner-title">黃方獲勝</h3>
+        <ol id="winner-ranks"></ol>
+        <button id="btn-home" class="btn primary" type="button">返回大廳</button>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/js/client.js"></script>
+  </body>
+</html>
