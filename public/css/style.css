@@ -302,6 +302,24 @@ input:focus {
   letter-spacing: 0.08em;
 }
 
+.board-hud {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+  max-width: calc(100% - 20px);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.92);
+  border: 1px solid rgba(42, 31, 20, 0.16);
+  box-shadow: 0 8px 20px rgba(42, 31, 20, 0.16);
+  font-weight: 800;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
 .board-hud:empty {
   display: none;
 }
