@@ -23,6 +23,14 @@ npm test
 
 兩開分頁即可同房對戰：一頁「建立房間」，另一頁輸入四碼房間代碼或開啟複製的連結，雙方準備後開局（缺人由電腦補）。
 
+## 部署（公開 HTTPS）
+
+伺服器綁定 `0.0.0.0` 與 `process.env.PORT`（平台會注入）。房間狀態在記憶體裡，**請保持單一實例**，不要水平擴充。
+
+- Render：接上這個 repo 後會讀 `render.yaml`（免費方案會在閒置後休眠，第一次開啟可能要等約一分鐘）。
+- Fly.io：`fly launch` / `fly deploy`（`fly.toml` + `Dockerfile`）。
+- Railway：`npm start`，讀 `Procfile`。
+
 ## 怎麼玩
 
 1. 輸入暱稱，建立或加入房間。

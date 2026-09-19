@@ -28,6 +28,9 @@ const PORT = Number(process.env.PORT || 43177);
 const rooms = new Map();
 
 const app = express();
+app.get("/healthz", (_req, res) => {
+  res.status(200).json({ ok: true });
+});
 app.use(express.static(path.join(__dirname, "../public")));
 app.use("/shared", express.static(path.join(__dirname, "../shared")));
 
