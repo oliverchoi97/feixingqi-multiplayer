@@ -7,8 +7,10 @@ import {
   generateLayout,
   mulberry32,
   neighbors,
+  restoreBoard,
   revealCell,
   safeCells,
+  snapshotBoard,
   toggleFlag,
 } from "./mines.js";
 
@@ -100,6 +102,18 @@ describe("reveal", () => {
     assert.equal(boom.ok, false);
     toggleFlag(board, i);
     assert.equal(board.flagCount, 0);
+  });
+
+  it("snapshot restore undoes a mine hit", () => {
+    const board = generateLayout(PRESETS.A, mulberry32(3));
+    const mine = [...board.mine].findIndex((m) => m);
+    const snap = snapshotBoard(board);
+    revealCell(board, mine);
+    assert.equal(board.alive, false);
+    restoreBoard(board, snap);
+    assert.equal(board.alive, true);
+    assert.equal(board.exploded, -1);
+    assert.equal(board.revealed[mine], 0);
   });
 
   it("neighbor helper stays in bounds", () => {

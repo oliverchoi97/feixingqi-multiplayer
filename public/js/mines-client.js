@@ -3,7 +3,9 @@ import {
   emptyBoard,
   publicOwnBoard,
   remainingMines,
+  restoreBoard,
   revealCell,
+  snapshotBoard,
   toggleFlag,
 } from "/shared/mines.js";
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
@@ -77,6 +79,7 @@ $("btn-again").onclick = () => {
   if (mode === "solo" && solo) startSolo(solo.key);
   else location.assign("/minesweeper");
 };
+$("btn-rewind").onclick = rewindSolo;
 
 bindChatBar($("chat-bar"), { onSend: sendChat });
 
@@ -178,8 +181,10 @@ function startSolo(key) {
   if (!preset) return;
   saveNick();
   mode = "solo";
-  solo = { key, preset, board: emptyBoard(preset), t0: 0 };
+  solo = { key, preset, board: emptyBoard(preset), t0: 0, rewind: null };
   $("btn-reset").hidden = false;
+  $("btn-rewind").hidden = true;
+  $("rewind-hint").hidden = true;
   $("ms-race").hidden = true;
   $("winner-modal").hidden = true;
   $("ms-level").textContent = preset.nameZh;
@@ -193,8 +198,10 @@ function onReveal(i) {
   if (longPress?.flagged) return;
   if (mode === "solo") {
     if (!solo.t0) solo.t0 = Date.now();
+    const snap = snapshotBoard(solo.board);
     const result = revealCell(solo.board, i, Math.random);
     if (!result.ok) return;
+    solo.rewind = snap;
     paintSolo();
     if (result.hit) endSolo(false);
     else if (result.won) endSolo(true);
@@ -239,11 +246,17 @@ function applyCells(list, exploded) {
     el.className = "ms-cell";
     el.textContent = "";
     el.removeAttribute("data-adj");
+    el.removeAttribute("title");
+    el.removeAttribute("aria-label");
   }
   for (const c of list) {
     const el = cells[c.i];
     if (!el) continue;
-    if (c.flagged) el.classList.add("flag");
+    if (c.flagged) {
+      el.classList.add("flag");
+      el.title = "旗";
+      el.setAttribute("aria-label", "旗");
+    }
     if (c.revealed) {
       el.classList.add("revealed");
       if (c.mine) {
@@ -289,8 +302,21 @@ function endSolo(won) {
   $("winner-title").textContent = won ? "成功排雷" : "踩到地雷";
   $("winner-detail").textContent = won
     ? `用時 ${$("ms-timer").textContent} 秒。`
-    : "再試一次，或換較低難度。";
+    : "可時光倒流，撤回踩雷的那一步後繼續。";
+  $("btn-rewind").hidden = Boolean(won || !solo?.rewind);
+  $("rewind-hint").hidden = $("btn-rewind").hidden;
   $("winner-modal").hidden = false;
+}
+
+function rewindSolo() {
+  if (mode !== "solo" || !solo?.rewind) return;
+  restoreBoard(solo.board, solo.rewind);
+  solo.rewind = null;
+  $("winner-modal").hidden = true;
+  $("btn-rewind").hidden = true;
+  $("rewind-hint").hidden = true;
+  paintSolo();
+  startTimer(() => (solo.t0 ? Math.floor((Date.now() - solo.t0) / 1000) : 0));
 }
 
 function showRaceResult(view) {
@@ -304,6 +330,8 @@ function showRaceResult(view) {
   }[view.reason] || "";
   $("winner-title").textContent = youWin ? "你贏了" : view.winnerId ? "對手獲勝" : "對局結束";
   $("winner-detail").textContent = reason;
+  $("btn-rewind").hidden = true;
+  $("rewind-hint").hidden = true;
   $("winner-modal").hidden = false;
 }
 

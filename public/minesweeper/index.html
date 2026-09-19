@@ -46,7 +46,7 @@
           </div>
         </div>
         <p class="hint">
-          競賽：先清完所有安全格者勝；踩雷即出局，對手若仍在場即獲勝。幾乎同時的操作以伺服器先收到的為準。對局中斷線視為棄權。競賽開局即佈雷，第一格不保證安全。
+          競賽：先清完所有安全格者勝；踩雷即出局，對手若仍在場即獲勝。幾乎同時的操作以伺服器先收到的為準。對局中斷線視為棄權。競賽開局即佈雷，第一格不保證安全。單人踩雷可用「時光倒流」撤回上一手；競賽不可倒流。
         </p>
       </div>
     </section>
@@ -91,7 +91,11 @@
         <p class="eyebrow">結果</p>
         <h3 id="winner-title">完成</h3>
         <p id="winner-detail" class="lede tight"></p>
-        <button id="btn-again" class="btn primary" type="button">再來一局</button>
+        <p id="rewind-hint" class="hint" hidden>時光倒流會撤回踩雷的那一步，盤面回到上一手，計時繼續。</p>
+        <div class="home-actions" style="margin-top:12px">
+          <button id="btn-rewind" class="btn primary" type="button" hidden>時光倒流</button>
+          <button id="btn-again" class="btn" type="button">再來一局</button>
+        </div>
       </div>
     </div>
 

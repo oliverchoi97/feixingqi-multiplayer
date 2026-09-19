@@ -168,6 +168,36 @@ export function remainingMines(board) {
   return board.mines - board.flagCount;
 }
 
+export function snapshotBoard(board) {
+  return {
+    revealed: new Uint8Array(board.revealed),
+    flagged: new Uint8Array(board.flagged),
+    mine: new Uint8Array(board.mine),
+    adj: new Uint8Array(board.adj),
+    placed: board.placed,
+    exploded: board.exploded,
+    alive: board.alive,
+    won: board.won,
+    revealedSafe: board.revealedSafe,
+    flagCount: board.flagCount,
+  };
+}
+
+export function restoreBoard(board, snap) {
+  if (!snap) return { ok: false, error: "沒有可倒流的步驟" };
+  board.revealed.set(snap.revealed);
+  board.flagged.set(snap.flagged);
+  board.mine.set(snap.mine);
+  board.adj.set(snap.adj);
+  board.placed = snap.placed;
+  board.exploded = snap.exploded;
+  board.alive = snap.alive;
+  board.won = snap.won;
+  board.revealedSafe = snap.revealedSafe;
+  board.flagCount = snap.flagCount;
+  return { ok: true };
+}
+
 export function publicOwnBoard(board, { showMines = false } = {}) {
   const cells = [];
   for (let i = 0; i < board.n; i++) {
