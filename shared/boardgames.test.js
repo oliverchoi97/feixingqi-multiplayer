@@ -12,17 +12,18 @@ const two = (a = "h", b = "g") => [
 ];
 
 describe("過三關", () => {
-  it("vanishes the oldest mark on the 5th placement, then checks win", () => {
+  it("vanishes the oldest mark on the 8th placement", () => {
     const g = createGame(two());
-    for (const i of [0, 3, 1, 4]) assert.equal(applyMove(g, g.turn, i).ok, true);
-    assert.equal(g.order.length, 4);
-    assert.deepEqual(g.cells.slice(0, 5), [1, 1, 0, 2, 2]);
-    const fifth = applyMove(g, 1, 8);
-    assert.equal(fifth.ok, true);
-    assert.equal(fifth.vanished, 0);
+    for (const i of [0, 1, 2, 3, 5, 6, 7]) assert.equal(applyMove(g, g.turn, i).ok, true);
+    assert.equal(g.phase, "playing");
+    assert.equal(g.order.length, 7);
+    assert.equal(g.cells[0], 1);
+    const eighth = applyMove(g, 2, 8);
+    assert.equal(eighth.ok, true);
+    assert.equal(eighth.vanished, 0);
     assert.equal(g.cells[0], 0);
-    assert.equal(g.cells[8], 1);
-    assert.equal(g.order.length, 4);
+    assert.equal(g.cells[8], 2);
+    assert.equal(g.order.length, 7);
     assert.equal(winnerOf(g.cells), 0);
   });
 

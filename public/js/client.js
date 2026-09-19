@@ -1,6 +1,6 @@
 import { BoardView, COLOR_META, colorTitle } from "./render.js";
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
-import { bindSessionButtons } from "./session-nav.js";
+import { bindSessionButtons, setInMatch } from "./session-nav.js";
 
 const socket = window.io();
 
@@ -21,6 +21,7 @@ let diceTimer = 0;
 let diceHoldTimer = 0;
 let movingTimer = 0;
 let dicePlaying = false;
+let diceWatchTimer = 0;
 let swipe = null;
 let lastChatAt = 0;
 
@@ -75,7 +76,7 @@ bindSessionButtons({
   onGoLobby: () => {
     game = null;
     moving = false;
-    dicePlaying = false;
+    abortDice();
     $("winner-modal").hidden = true;
     if (lobby) {
       show("lobby");
@@ -141,10 +142,7 @@ socket.on("moved", ({ sim }) => {
 socket.on("errorMsg", (msg) => {
   toast(msg);
   moving = false;
-  dicePlaying = false;
-  stopShuffleFaces();
-  $("center-die").classList.remove("rolling", "fling", "dragging");
-  $("dice").classList.remove("rolling");
+  abortDice("error");
   if (game) {
     renderGame(game);
     board.setState(game, game.legalPieceIds || []);
@@ -339,6 +337,7 @@ function requestRoll() {
   setCenterMode("rolling");
   $("center-die-hint").textContent = "擲骰中";
   startShuffleFaces();
+  armDiceWatch();
   socket.emit("rolling");
   socket.emit("roll");
 }
@@ -411,10 +410,13 @@ function startRemoteRoll(color) {
   const who = color ? colorTitle(color) : "";
   $("center-die-hint").textContent = who ? `${who}擲骰中` : "擲骰中";
   startShuffleFaces();
+  armDiceWatch();
 }
 
 function beginDiceResult(value, done, color) {
   dicePlaying = true;
+  clearTimeout(diceWatchTimer);
+  diceWatchTimer = 0;
   setCenterMode("rolling");
   $("center-die").classList.add("rolling");
   $("dice").classList.add("rolling");
@@ -422,10 +424,7 @@ function beginDiceResult(value, done, color) {
   const who = color ? colorTitle(color) : "";
   clearTimeout(diceHoldTimer);
   diceHoldTimer = setTimeout(() => {
-    stopShuffleFaces();
-    $("center-die").classList.remove("rolling", "fling", "dragging");
-    $("dice").classList.remove("rolling");
-    $("center-die").style.setProperty("--drag-y", "0px");
+    stopDiceMotion();
     setDice(value);
     setCenterMode("result");
     $("center-die-hint").textContent = who ? `${who} ${value}` : `擲出 ${value}`;
@@ -435,6 +434,35 @@ function beginDiceResult(value, done, color) {
       done?.();
     }, 900);
   }, 480);
+}
+
+function stopDiceMotion() {
+  stopShuffleFaces();
+  const die = $("center-die");
+  die.classList.remove("rolling", "fling", "dragging");
+  die.style.setProperty("--drag-y", "0px");
+  $("dice").classList.remove("rolling");
+}
+
+function abortDice() {
+  clearTimeout(diceWatchTimer);
+  diceWatchTimer = 0;
+  clearTimeout(diceHoldTimer);
+  dicePlaying = false;
+  stopDiceMotion();
+}
+
+function armDiceWatch() {
+  clearTimeout(diceWatchTimer);
+  diceWatchTimer = setTimeout(() => {
+    if (!dicePlaying) return;
+    abortDice();
+    toast("擲骰沒有回應，請再試一次");
+    if (game) {
+      renderGame(game);
+      board.setState(game, game.legalPieceIds || []);
+    }
+  }, 3500);
 }
 
 function startShuffleFaces() {
@@ -472,6 +500,7 @@ function setDice(v) {
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   setChatOpen($("chat-bar"), name === "lobby" || name === "game");
+  setInMatch(name === "game");
 }
 
 function sendChat(text) {

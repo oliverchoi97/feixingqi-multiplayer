@@ -1,5 +1,6 @@
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
-import { bindSessionButtons } from "./session-nav.js";
+import { bindSessionButtons, setInMatch } from "./session-nav.js";
+import { boardLayout, cellCenter, eventOffset, hitCell } from "/shared/boardLayout.js";
 
 const KIND = document.body.dataset.kind;
 const PATH = document.body.dataset.path;
@@ -17,6 +18,8 @@ let lobby = null;
 let game = null;
 let readyOn = false;
 let lastChatAt = 0;
+let layout = null;
+let hover = null;
 
 const canvas = $("board");
 const ctx = canvas.getContext("2d");
@@ -53,9 +56,24 @@ $("btn-pass")?.addEventListener("click", () => socket.emit("move", { pass: true 
 
 canvas.addEventListener("click", (e) => {
   if (!game?.yourTurn || game.phase !== "playing") return;
-  const hit = hitCell(e);
+  const { px, py } = eventOffset(canvas, e);
+  const hit = hitCell(layout, px, py);
   if (!hit) return;
   socket.emit("move", KIND === "guosanguan" ? { index: hit.i } : { x: hit.x, y: hit.y });
+});
+canvas.addEventListener("pointermove", (e) => {
+  if (!game || game.kind === "guosanguan" || game.phase !== "playing") return;
+  const { px, py } = eventOffset(canvas, e);
+  const hit = hitCell(layout, px, py);
+  const key = hit ? `${hit.x},${hit.y}` : "";
+  if (key === (hover ? `${hover.x},${hover.y}` : "")) return;
+  hover = hit;
+  paintBoard(game);
+});
+canvas.addEventListener("pointerleave", () => {
+  if (!hover) return;
+  hover = null;
+  if (game && game.kind !== "guosanguan") paintBoard(game);
 });
 
 if (KIND === "guosanguan") {
@@ -226,46 +244,52 @@ function paintBoard(view) {
   const size = view.size || 8;
   const wrap = canvas.parentElement;
   wrap.classList.toggle("othello", view.kind === "othello");
-  wrap.classList.toggle("go", view.kind === "go");
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const css = Math.max(280, wrap.clientWidth || 640);
-  canvas.width = Math.round(css * dpr);
-  canvas.height = Math.round(css * dpr);
+  wrap.classList.toggle("go", view.kind === "go" || view.kind === "gomoku");
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = Math.max(1, wrap.clientWidth);
+  const cssH = Math.max(1, wrap.clientHeight);
+  const bw = Math.max(1, Math.round(cssW * dpr));
+  const bh = Math.max(1, Math.round(cssH * dpr));
+  if (canvas.width !== bw || canvas.height !== bh) {
+    canvas.width = bw;
+    canvas.height = bh;
+  }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const w = css;
-  if (view.kind === "othello") paintOthello(view, w, size);
-  else paintGrid(view, w, size);
+  layout = boardLayout(view.kind, size, cssW, cssH);
+  if (view.kind === "othello") paintOthello(view, layout);
+  else paintGrid(view, layout);
 }
 
-function paintOthello(view, w, size) {
-  const pad = 10;
-  const cell = (w - pad * 2) / size;
+function paintOthello(view, L) {
   ctx.fillStyle = "#1f7a46";
-  ctx.fillRect(0, 0, w, w);
+  ctx.fillRect(0, 0, L.w, L.h);
   ctx.strokeStyle = "rgba(10,30,16,0.55)";
-  for (let i = 0; i <= size; i++) {
-    const p = pad + i * cell;
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= L.size; i++) {
     ctx.beginPath();
-    ctx.moveTo(pad, p);
-    ctx.lineTo(w - pad, p);
-    ctx.moveTo(p, pad);
-    ctx.lineTo(p, w - pad);
+    ctx.moveTo(L.ox + L.pad, L.oy + L.pad + i * L.cell);
+    ctx.lineTo(L.ox + L.pad + L.size * L.cell, L.oy + L.pad + i * L.cell);
+    ctx.moveTo(L.ox + L.pad + i * L.cell, L.oy + L.pad);
+    ctx.lineTo(L.ox + L.pad + i * L.cell, L.oy + L.pad + L.size * L.cell);
     ctx.stroke();
   }
   const legal = new Set((view.legal || []).map((m) => `${m.x},${m.y}`));
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const cx = pad + (x + 0.5) * cell;
-      const cy = pad + (y + 0.5) * cell;
-      const v = view.cells[y * size + x];
+  for (let y = 0; y < L.size; y++) {
+    for (let x = 0; x < L.size; x++) {
+      const { x: cx, y: cy } = cellCenter(L, x, y);
+      const v = view.cells[y * L.size + x];
+      if (hover && hover.x === x && hover.y === y && view.yourTurn) {
+        ctx.fillStyle = "rgba(255,248,220,0.18)";
+        ctx.fillRect(L.ox + L.pad + x * L.cell, L.oy + L.pad + y * L.cell, L.cell, L.cell);
+      }
       if (v) {
         ctx.beginPath();
-        ctx.arc(cx, cy, cell * 0.38, 0, Math.PI * 2);
+        ctx.arc(cx, cy, L.cell * 0.38, 0, Math.PI * 2);
         ctx.fillStyle = v === 1 ? "#111" : "#f4efe4";
         ctx.fill();
       } else if (view.yourTurn && legal.has(`${x},${y}`)) {
         ctx.beginPath();
-        ctx.arc(cx, cy, cell * 0.1, 0, Math.PI * 2);
+        ctx.arc(cx, cy, L.cell * 0.1, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255,248,220,0.7)";
         ctx.fill();
       }
@@ -273,24 +297,26 @@ function paintOthello(view, w, size) {
   }
 }
 
-function paintGrid(view, w, size) {
+function paintGrid(view, L) {
   ctx.fillStyle = "#e7c78a";
-  ctx.fillRect(0, 0, w, w);
-  const pad = w / (size + 1);
-  const gap = (w - pad * 2) / (size - 1);
+  ctx.fillRect(0, 0, L.w, L.h);
   ctx.strokeStyle = "#5c3d18";
-  ctx.lineWidth = Math.max(1, w / 520);
-  for (let i = 0; i < size; i++) {
-    const p = pad + i * gap;
+  ctx.lineWidth = Math.max(1, L.side / 520);
+  const x0 = L.ox + L.pad;
+  const y0 = L.oy + L.pad;
+  const x1 = L.ox + L.pad + (L.size - 1) * L.gap;
+  const y1 = L.oy + L.pad + (L.size - 1) * L.gap;
+  for (let i = 0; i < L.size; i++) {
+    const p = L.pad + i * L.gap;
     ctx.beginPath();
-    ctx.moveTo(pad, p);
-    ctx.lineTo(w - pad, p);
-    ctx.moveTo(p, pad);
-    ctx.lineTo(p, w - pad);
+    ctx.moveTo(x0, L.oy + p);
+    ctx.lineTo(x1, L.oy + p);
+    ctx.moveTo(L.ox + p, y0);
+    ctx.lineTo(L.ox + p, y1);
     ctx.stroke();
   }
   const stars =
-    size === 9
+    L.size === 9
       ? [
           [2, 2],
           [6, 2],
@@ -298,7 +324,7 @@ function paintGrid(view, w, size) {
           [2, 6],
           [6, 6],
         ]
-      : size === 15
+      : L.size === 15
         ? [
             [3, 3],
             [11, 3],
@@ -309,18 +335,25 @@ function paintGrid(view, w, size) {
         : [];
   ctx.fillStyle = "#5c3d18";
   for (const [x, y] of stars) {
+    const c = cellCenter(L, x, y);
     ctx.beginPath();
-    ctx.arc(pad + x * gap, pad + y * gap, Math.max(2.4, gap * 0.08), 0, Math.PI * 2);
+    ctx.arc(c.x, c.y, Math.max(2.4, L.gap * 0.08), 0, Math.PI * 2);
     ctx.fill();
   }
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const v = view.cells[y * size + x];
+  if (hover && view.yourTurn && view.phase === "playing") {
+    const c = cellCenter(L, hover.x, hover.y);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, L.gap * 0.18, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(156,28,28,0.28)";
+    ctx.fill();
+  }
+  for (let y = 0; y < L.size; y++) {
+    for (let x = 0; x < L.size; x++) {
+      const v = view.cells[y * L.size + x];
       if (!v) continue;
-      const cx = pad + x * gap;
-      const cy = pad + y * gap;
+      const c = cellCenter(L, x, y);
       ctx.beginPath();
-      ctx.arc(cx, cy, gap * 0.42, 0, Math.PI * 2);
+      ctx.arc(c.x, c.y, L.gap * 0.42, 0, Math.PI * 2);
       ctx.fillStyle = v === 1 ? "#1a140e" : "#f7f1e4";
       ctx.shadowColor = "rgba(0,0,0,0.25)";
       ctx.shadowBlur = 6;
@@ -331,40 +364,18 @@ function paintGrid(view, w, size) {
     }
   }
   if (view.last && view.last.x != null) {
-    const cx = pad + view.last.x * gap;
-    const cy = pad + view.last.y * gap;
+    const c = cellCenter(L, view.last.x, view.last.y);
     ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.arc(c.x, c.y, Math.max(3, L.gap * 0.12), 0, Math.PI * 2);
     ctx.fillStyle = "#c43030";
     ctx.fill();
   }
 }
 
-function hitCell(e) {
-  if (KIND === "guosanguan") return null;
-  const rect = canvas.getBoundingClientRect();
-  const px = e.clientX - rect.left;
-  const py = e.clientY - rect.top;
-  const size = game.size || 8;
-  if (KIND === "othello") {
-    const pad = 10 * (rect.width / canvas.getBoundingClientRect().width);
-    const cell = (rect.width - 20) / size;
-    const x = Math.floor((px - 10) / cell);
-    const y = Math.floor((py - 10) / cell);
-    if (x < 0 || y < 0 || x >= size || y >= size) return null;
-    return { x, y };
-  }
-  const pad = rect.width / (size + 1);
-  const gap = (rect.width - pad * 2) / (size - 1);
-  const x = Math.round((px - pad) / gap);
-  const y = Math.round((py - pad) / gap);
-  if (x < 0 || y < 0 || x >= size || y >= size) return null;
-  return { x, y };
-}
-
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   setChatOpen($("chat-bar"), name === "lobby" || name === "play");
+  setInMatch(name === "play");
 }
 
 function sendChat(text) {

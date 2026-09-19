@@ -305,13 +305,20 @@ export function broadcast(room, io) {
   }
 }
 
+/** Game already expects a roll. Do not block on `busy` (move animation / AI think). */
+export function allowHumanRoll(room) {
+  return Boolean(room?.game && room.game.phase === "playing" && room.game.action === "roll");
+}
+
 export function handleRoll(room, playerId) {
   if (!room.game) return { ok: false, error: "對局尚未開始" };
   const seat = room.game.seats.find((s) => s.playerId === playerId);
   if (!seat || seat.color !== currentColor(room.game)) {
     return { ok: false, error: "還沒輪到你" };
   }
-  if (room.game.action !== "roll") return { ok: false, error: "現在不能擲骰" };
+  if (room.game.action !== "roll") {
+    return { ok: false, error: room.busy ? "請等棋子走完再擲" : "現在不能擲骰" };
+  }
   return rollDie(room.game);
 }
 

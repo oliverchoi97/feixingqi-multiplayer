@@ -1,7 +1,7 @@
-/** 過三關：3×3，最多 4 子；第 5 子落下後最舊的子消失，再判勝負。先手 ○=1，後手 ×=2。 */
+/** 過三關：3×3，最多 7 子；第 8 子落下時先看有沒有三連，沒有則最舊的子消失再判。先手 ○=1，後手 ×=2。 */
 
 export const SIZE = 3;
-export const MAX_MARKS = 4;
+export const MAX_MARKS = 7;
 export const SIDES = {
   1: { id: 1, nameZh: "圈", mark: "○" },
   2: { id: 2, nameZh: "叉", mark: "×" },

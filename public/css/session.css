@@ -18,3 +18,11 @@
 #session-confirm {
   z-index: 40;
 }
+
+body:not(.in-match) button[data-session="end"] {
+  display: none !important;
+}
+
+#winner-modal button[data-session="end"] {
+  display: inline-block !important;
+}

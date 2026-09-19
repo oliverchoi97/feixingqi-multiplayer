@@ -12,6 +12,7 @@ import {
   gameView,
   handleMove,
   handleRoll,
+  allowHumanRoll,
   isAiTurn,
   joinRoom,
   lobbyView,
@@ -290,17 +291,23 @@ io.on("connection", (socket) => {
 
   socket.on("rolling", () => {
     const room = getRoom(socket.data.roomCode);
-    if (!room?.game || room.busy) return;
+    if (!allowHumanRoll(room)) return;
     const color = room.game.seats[room.game.turnIndex]?.color;
     const seat = room.game.seats.find((s) => s.color === color);
     if (!seat || seat.playerId !== socket.data.playerId) return;
-    if (room.game.action !== "roll") return;
     socket.to(room.code).emit("rolling", { color });
   });
 
   socket.on("roll", () => {
     const room = getRoom(socket.data.roomCode);
-    if (!room || room.busy) return;
+    if (!room) return;
+    // Extra turn after a 6 (takeoff) sets action=roll immediately, but busy
+    // stays true until animationMs. Dropping the roll left the center die spinning.
+    if (!allowHumanRoll(room)) {
+      const result = handleRoll(room, socket.data.playerId);
+      socket.emit("errorMsg", result.error || "現在不能擲骰");
+      return;
+    }
     const color = room.game.seats[room.game.turnIndex]?.color;
     const result = handleRoll(room, socket.data.playerId);
     if (!result.ok) {

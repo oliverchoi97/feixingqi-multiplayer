@@ -9,7 +9,7 @@ import {
   toggleFlag,
 } from "/shared/mines.js";
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
-import { bindSessionButtons } from "./session-nav.js";
+import { bindSessionButtons, setInMatch } from "./session-nav.js";
 
 const socket = window.io("/mines");
 const $ = (id) => document.getElementById(id);
@@ -367,6 +367,7 @@ function joinTyped() {
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   setChatOpen($("chat-bar"), name === "lobby" || name === "play");
+  setInMatch(name === "play");
 }
 
 function sendChat(text) {

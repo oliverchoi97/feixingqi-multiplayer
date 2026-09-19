@@ -39,6 +39,10 @@ export function confirmAction({ title, body, confirmLabel, onConfirm }) {
   };
 }
 
+export function setInMatch(on) {
+  document.body.classList.toggle("in-match", !!on);
+}
+
 export function bindSessionButtons({ socket, lobbyPath, onGoLobby, hasRoom } = {}) {
   const go = (action) => {
     const toMenu = action === "menu";
