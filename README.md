@@ -36,7 +36,7 @@ npm run dev
 經典中國飛行棋（不是 Ludo）。棋盤外觀依 Wikimedia Commons [Fei xing qi board (BYGR).svg](https://commons.wikimedia.org/wiki/File:Fei_xing_qi_board_(BYGR).svg)（Mliu92，CC BY-SA 4.0）。
 
 1. 輸入暱稱，建立或加入房間。
-2. 點「準備」。全員準備後開局；空位由電腦補滿四家。
+2. 在候機室**選擇角色**（黃貓、藍狗、綠龜、紅兔），再點「準備」。開局前可更換；未選的角色由電腦補滿四家。
 3. 輪到你時在棋盤中央向上滑動骰子（也可點一下）。
 4. 四方棋子全部進終點者獲勝。棋子圖示：黃貓、綠龜、紅兔、藍狗。
 

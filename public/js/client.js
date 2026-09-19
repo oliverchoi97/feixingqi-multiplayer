@@ -45,6 +45,11 @@ $("btn-ready").onclick = () => {
 };
 
 $("btn-start").onclick = () => socket.emit("start");
+$("lobby-seats").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-color]");
+  if (!btn || btn.disabled) return;
+  socket.emit("chooseColor", btn.dataset.color);
+});
 $("btn-copy").onclick = async () => {
   if (!lobby) return;
   const url = `${location.origin}/feixingqi?room=${lobby.code}`;
@@ -149,19 +154,28 @@ function joinTyped() {
 function renderLobby(view) {
   $("lobby-code").textContent = view.code;
   $("btn-ready").textContent = view.ready ? "取消準備" : "準備";
+  $("btn-ready").disabled = !view.yourColor;
   $("btn-start").hidden = !view.isHost;
   $("btn-start").disabled = !view.canStart;
-  $("lobby-status").textContent = view.canStart
-    ? "全員準備完成，即將開局（空位由電腦補上）。"
-    : "點準備後開局。尚未入座的顏色會由電腦執飛，湊滿四家。";
-  $("lobby-seats").innerHTML = view.seats
+  $("lobby-status").textContent = !view.yourColor
+    ? "請先選擇角色（黃貓、藍狗、綠龜、紅兔）。開局前可更換。"
+    : view.canStart
+      ? "全員已選角並準備，即將開局（空位由電腦補上）。"
+      : "點準備後開局。未選的角色開局後由電腦執掌。";
+  $("lobby-seats").innerHTML = ["yellow", "blue", "green", "red"]
+    .map((color) => view.seats.find((s) => s.color === color))
+    .filter(Boolean)
     .map((s) => {
-      if (s.empty) {
-        return `<div class="seat"><i class="swatch ${s.color}"></i><div>${colorTitle(s.color)}　空位（電腦）</div><span>未入座</span></div>`;
-      }
-      const tag = s.you ? "你" : s.type === "ai" ? "電腦" : s.connected ? "在線" : "離線";
-      const ready = s.ready ? "已準備" : "未準備";
-      return `<div class="seat"><i class="swatch ${s.color}"></i><div>${colorTitle(s.color)}　${escapeHtml(s.name)}${s.isHost ? "（房主）" : ""}</div><span>${tag} · ${ready}</span></div>`;
+      const mine = !!s.you;
+      const taken = !s.empty && !mine;
+      let status = "可選";
+      if (mine) status = view.ready ? "已選 · 已準備" : "已選 · 你";
+      else if (!s.empty) status = `${escapeHtml(s.name)}${s.ready ? " · 已準備" : ""}`;
+      return `<button type="button" class="role-card${mine ? " selected" : ""}${taken ? " taken" : ""}" data-color="${s.color}" ${taken ? "disabled" : ""}>
+        <img src="${COLOR_META[s.color].pieceSrc}" alt="${colorTitle(s.color)}" width="72" height="72" />
+        <strong>${colorTitle(s.color)}</strong>
+        <span>${status}</span>
+      </button>`;
     })
     .join("");
 }

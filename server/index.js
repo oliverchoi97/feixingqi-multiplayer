@@ -6,21 +6,21 @@ import { Server } from "socket.io";
 import {
   aiAct,
   animationMs,
-  assignColor,
   broadcast,
   clearTimers,
   createRoom,
-  gameView,
-  handleMove,
-  handleRoll,
-  isAiTurn,
-  joinRoom,
-  lobbyView,
-  makeId,
-  maybeContinueAi,
-  schedule,
-  setReady,
-  startGame,
+    gameView,
+    handleMove,
+    handleRoll,
+    isAiTurn,
+    joinRoom,
+    lobbyView,
+    makeId,
+    maybeContinueAi,
+    schedule,
+    chooseColor,
+    setReady,
+    startGame,
 } from "./rooms.js";
 import {
   broadcastMines,
@@ -104,7 +104,6 @@ io.on("connection", (socket) => {
       nickname: sanitizeName(nickname),
       socketId: socket.id,
     });
-    assignColor(room, room.players[0]);
     rooms.set(room.code, room);
     socket.data.playerId = id;
     socket.data.roomCode = room.code;
@@ -153,7 +152,10 @@ io.on("connection", (socket) => {
     const room = getRoom(socket.data.roomCode);
     if (!room) return;
     const result = setReady(room, socket.data.playerId, ready);
-    if (!result.ok) return;
+    if (!result.ok) {
+      if (result.error) socket.emit("errorMsg", result.error);
+      return;
+    }
     broadcast(room, io);
     if (result.autoStart) begin(room);
   });
@@ -166,6 +168,22 @@ io.on("connection", (socket) => {
       return;
     }
     begin(room);
+  });
+
+  socket.on("chooseColor", (color) => {
+    const room = getRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = chooseColor(room, socket.data.playerId, color);
+    if (!result.ok) {
+      socket.emit("errorMsg", result.error);
+      return;
+    }
+    socket.emit("joined", {
+      playerId: socket.data.playerId,
+      code: room.code,
+      color: result.color,
+    });
+    broadcast(room, io);
   });
 
   socket.on("rolling", () => {

@@ -51,9 +51,20 @@ function takenColors(room) {
 export function assignColor(room, player) {
   if (player.color) return player.color;
   const taken = takenColors(room);
-  const color = COLORS.find((c) => !taken.has(c));
+  const color = COLORS.find((c) => !taken.has(c)) ?? null;
   player.color = color;
   return color;
+}
+
+export function chooseColor(room, playerId, color) {
+  if (room.game) return { ok: false, error: "對局已經開始" };
+  if (!COLORS.includes(color)) return { ok: false, error: "沒有這個角色" };
+  const player = room.players.find((p) => p.playerId === playerId);
+  if (!player || player.type !== "human") return { ok: false, error: "找不到玩家" };
+  const occupant = room.players.find((p) => p.color === color && p.playerId !== playerId);
+  if (occupant) return { ok: false, error: "這個角色已被選走" };
+  player.color = color;
+  return { ok: true, color };
 }
 
 export function lobbyView(room, viewerId) {
@@ -103,7 +114,6 @@ export function joinRoom(room, { playerId, nickname, socketId }) {
     existing.connected = true;
     existing.socketId = socketId;
     existing.nickname = nickname || existing.nickname;
-    assignColor(room, existing);
     return { ok: true, rejoin: true, player: existing };
   }
   const humans = room.players.filter((p) => p.type === "human");
@@ -117,7 +127,6 @@ export function joinRoom(room, { playerId, nickname, socketId }) {
     connected: true,
     socketId,
   };
-  assignColor(room, player);
   room.players.push(player);
   return { ok: true, rejoin: false, player };
 }
@@ -125,6 +134,7 @@ export function joinRoom(room, { playerId, nickname, socketId }) {
 export function setReady(room, playerId, ready) {
   const p = room.players.find((x) => x.playerId === playerId);
   if (!p || p.type !== "human" || room.game) return { ok: false };
+  if (ready && !p.color) return { ok: false, error: "請先選擇角色" };
   p.ready = !!ready;
   const humans = room.players.filter((x) => x.type === "human");
   const allReady = humans.every((x) => x.ready && x.color);
@@ -133,9 +143,11 @@ export function setReady(room, playerId, ready) {
 
 export function startGame(room) {
   if (room.game) return { ok: false, error: "對局已經開始" };
-  const humans = room.players.filter((p) => p.type === "human" && p.color);
+  const humans = room.players.filter((p) => p.type === "human");
   if (!humans.length) return { ok: false, error: "至少需要一名玩家" };
-  if (!humans.every((p) => p.ready)) return { ok: false, error: "請等待所有玩家準備" };
+  if (!humans.every((p) => p.ready && p.color)) {
+    return { ok: false, error: "每位玩家都要選擇角色並準備" };
+  }
 
   for (const color of COLORS) {
     if (room.players.some((p) => p.color === color)) continue;
