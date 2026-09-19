@@ -64,7 +64,7 @@ function page({ kind, path, kicker, title, lede, rule }) {
         </div>
       </div>
     </section>
-    <section id="screen-play" class="screen game-screen" hidden>
+    <section id="screen-play" class="screen table-screen" hidden>
       <div class="table-play">
         <aside class="panel">
           <div class="panel-top">

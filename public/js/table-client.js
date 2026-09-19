@@ -104,6 +104,9 @@ socket.on("state", (view) => {
   lobby = lobby || { code: view.code };
   show("play");
   renderPlay(view);
+  requestAnimationFrame(() => {
+    if (game === view) renderPlay(view);
+  });
   if (view.phase === "ended") showWinner(view);
 });
 
@@ -225,7 +228,7 @@ function paintBoard(view) {
   wrap.classList.toggle("othello", view.kind === "othello");
   wrap.classList.toggle("go", view.kind === "go");
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const css = wrap.clientWidth || 640;
+  const css = Math.max(280, wrap.clientWidth || 640);
   canvas.width = Math.round(css * dpr);
   canvas.height = Math.round(css * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -271,12 +274,12 @@ function paintOthello(view, w, size) {
 }
 
 function paintGrid(view, w, size) {
-  ctx.fillStyle = "#e2c48a";
+  ctx.fillStyle = "#e7c78a";
   ctx.fillRect(0, 0, w, w);
   const pad = w / (size + 1);
   const gap = (w - pad * 2) / (size - 1);
-  ctx.strokeStyle = "#5a3b16";
-  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = "#5c3d18";
+  ctx.lineWidth = Math.max(1, w / 520);
   for (let i = 0; i < size; i++) {
     const p = pad + i * gap;
     ctx.beginPath();
@@ -286,19 +289,29 @@ function paintGrid(view, w, size) {
     ctx.lineTo(p, w - pad);
     ctx.stroke();
   }
-  if (view.kind === "go" && size === 9) {
-    ctx.fillStyle = "#5a3b16";
-    for (const [x, y] of [
-      [2, 2],
-      [6, 2],
-      [4, 4],
-      [2, 6],
-      [6, 6],
-    ]) {
-      ctx.beginPath();
-      ctx.arc(pad + x * gap, pad + y * gap, 3.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
+  const stars =
+    size === 9
+      ? [
+          [2, 2],
+          [6, 2],
+          [4, 4],
+          [2, 6],
+          [6, 6],
+        ]
+      : size === 15
+        ? [
+            [3, 3],
+            [11, 3],
+            [7, 7],
+            [3, 11],
+            [11, 11],
+          ]
+        : [];
+  ctx.fillStyle = "#5c3d18";
+  for (const [x, y] of stars) {
+    ctx.beginPath();
+    ctx.arc(pad + x * gap, pad + y * gap, Math.max(2.4, gap * 0.08), 0, Math.PI * 2);
+    ctx.fill();
   }
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
