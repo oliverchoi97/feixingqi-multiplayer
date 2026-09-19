@@ -94,7 +94,13 @@ socket.on("state", (view) => {
   if (!moving && !dicePlaying) tryAutoMove();
 });
 
-socket.on("rolled", ({ roll, threeSixes }) => {
+socket.on("rolled", ({ roll, threeSixes, color }) => {
+  const mine = dicePlaying || game?.yourColor === color;
+  if (!mine) {
+    setDice(roll);
+    if (threeSixes) toast("三次六返大陸！");
+    return;
+  }
   beginDiceResult(roll, () => {
     if (threeSixes) toast("三次六返大陸！");
     tryAutoMove();
