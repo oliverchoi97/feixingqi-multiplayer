@@ -232,6 +232,7 @@ export function aiAct(room, io) {
       maybeContinueAi(room, io);
       return;
     }
+    io.to(room.code).emit("rolling", { color });
     const rolled = rollDie(room.game);
     io.to(room.code).emit("rolled", {
       color,

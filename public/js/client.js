@@ -1,4 +1,5 @@
 import { BoardView, COLOR_META } from "./render.js";
+import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
 
 const socket = window.io();
 
@@ -20,6 +21,7 @@ let diceHoldTimer = 0;
 let movingTimer = 0;
 let dicePlaying = false;
 let swipe = null;
+let lastChatAt = 0;
 
 const params = new URLSearchParams(location.search);
 if (params.get("room")) $("join-code").value = params.get("room").toUpperCase();
@@ -59,6 +61,7 @@ $("btn-rules").onclick = () => $("modal").hidden = false;
 $("btn-close-rules").onclick = () => $("modal").hidden = true;
 $("btn-roll").onclick = () => requestRoll();
 bindCenterDie();
+bindChatBar($("chat-bar"), { onSend: sendChat });
 
 $("board").addEventListener("click", (e) => {
   if (!game?.yourTurn || game.action !== "select" || moving) return;
@@ -95,16 +98,19 @@ socket.on("state", (view) => {
 });
 
 socket.on("rolled", ({ roll, threeSixes, color }) => {
-  const mine = dicePlaying || game?.yourColor === color;
-  if (!mine) {
-    setDice(roll);
-    if (threeSixes) toast("三次六返大陸！");
-    return;
-  }
   beginDiceResult(roll, () => {
     if (threeSixes) toast("三次六返大陸！");
-    tryAutoMove();
-  });
+    if (game?.yourColor === color) tryAutoMove();
+  }, color);
+});
+
+socket.on("rolling", ({ color } = {}) => {
+  if (dicePlaying) return;
+  startRemoteRoll(color);
+});
+
+socket.on("chat", (msg) => {
+  spawnDanmaku($("danmaku-layer"), { name: msg.nickname, text: msg.text }, escapeHtml);
 });
 
 socket.on("moved", ({ sim }) => {
@@ -302,6 +308,7 @@ function requestRoll() {
   setCenterMode("rolling");
   $("center-die-hint").textContent = "擲骰中";
   startShuffleFaces();
+  socket.emit("rolling");
   socket.emit("roll");
 }
 
@@ -364,12 +371,24 @@ function bindCenterDie() {
   });
 }
 
-function beginDiceResult(value, done) {
+function startRemoteRoll(color) {
+  dicePlaying = true;
+  setCenterMode("rolling");
+  $("center-die").classList.add("rolling");
+  $("center-die").classList.remove("fling", "dragging");
+  $("dice").classList.add("rolling");
+  const who = COLOR_META[color]?.nameZh;
+  $("center-die-hint").textContent = who ? `${who}方擲骰中` : "擲骰中";
+  startShuffleFaces();
+}
+
+function beginDiceResult(value, done, color) {
   dicePlaying = true;
   setCenterMode("rolling");
   $("center-die").classList.add("rolling");
   $("dice").classList.add("rolling");
   if (!diceTimer) startShuffleFaces();
+  const who = COLOR_META[color]?.nameZh;
   clearTimeout(diceHoldTimer);
   diceHoldTimer = setTimeout(() => {
     stopShuffleFaces();
@@ -378,13 +397,13 @@ function beginDiceResult(value, done) {
     $("center-die").style.setProperty("--drag-y", "0px");
     setDice(value);
     setCenterMode("result");
-    $("center-die-hint").textContent = `擲出 ${value}`;
+    $("center-die-hint").textContent = who ? `${who}方 ${value}` : `擲出 ${value}`;
     diceHoldTimer = setTimeout(() => {
       dicePlaying = false;
       syncCenterDice();
       done?.();
-    }, 720);
-  }, 420);
+    }, 900);
+  }, 480);
 }
 
 function startShuffleFaces() {
@@ -421,6 +440,17 @@ function setDice(v) {
 
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
+  setChatOpen($("chat-bar"), name === "lobby" || name === "game");
+}
+
+function sendChat(text) {
+  const now = Date.now();
+  if (now - lastChatAt < 800) {
+    toast("說慢一點");
+    return false;
+  }
+  lastChatAt = now;
+  socket.emit("chat", text);
 }
 
 function toast(msg) {

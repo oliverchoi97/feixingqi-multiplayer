@@ -6,6 +6,7 @@ import {
   revealCell,
   toggleFlag,
 } from "/shared/mines.js";
+import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
 
 const socket = window.io("/mines");
 const $ = (id) => document.getElementById(id);
@@ -24,6 +25,7 @@ let readyOn = false;
 let timerId = 0;
 let longPress = null;
 let cells = [];
+let lastChatAt = 0;
 
 const params = new URLSearchParams(location.search);
 if (params.get("room")) $("join-code").value = params.get("room").toUpperCase();
@@ -75,6 +77,8 @@ $("btn-again").onclick = () => {
   if (mode === "solo" && solo) startSolo(solo.key);
   else location.assign("/minesweeper");
 };
+
+bindChatBar($("chat-bar"), { onSend: sendChat });
 
 $("ms-board").addEventListener("click", (e) => {
   const i = cellIndex(e.target);
@@ -156,6 +160,10 @@ socket.on("state", (view) => {
 
 socket.on("errorMsg", (msg) => toast(msg));
 
+socket.on("chat", (msg) => {
+  spawnDanmaku($("danmaku-layer"), { name: msg.nickname, text: msg.text }, escapeHtml);
+});
+
 if (me.playerId && params.get("room")) {
   saveNick();
   socket.emit("join", {
@@ -168,6 +176,7 @@ if (me.playerId && params.get("room")) {
 function startSolo(key) {
   const preset = PRESETS[key];
   if (!preset) return;
+  saveNick();
   mode = "solo";
   solo = { key, preset, board: emptyBoard(preset), t0: 0 };
   $("btn-reset").hidden = false;
@@ -314,6 +323,22 @@ function joinTyped() {
 
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
+  setChatOpen($("chat-bar"), name === "lobby" || name === "play");
+}
+
+function sendChat(text) {
+  saveNick();
+  const now = Date.now();
+  if (now - lastChatAt < 800) {
+    toast("說慢一點");
+    return false;
+  }
+  lastChatAt = now;
+  if (mode === "solo") {
+    spawnDanmaku($("danmaku-layer"), { name: me.nickname || "玩家", text }, escapeHtml);
+    return true;
+  }
+  socket.emit("chat", text);
 }
 
 function startTimer(fn) {

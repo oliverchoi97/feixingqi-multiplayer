@@ -34,6 +34,7 @@ import {
   setMinesReady,
   startMinesGame,
 } from "./minesRooms.js";
+import { takeChat } from "./chat.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 43177);
@@ -167,6 +168,16 @@ io.on("connection", (socket) => {
     begin(room);
   });
 
+  socket.on("rolling", () => {
+    const room = getRoom(socket.data.roomCode);
+    if (!room?.game || room.busy) return;
+    const color = room.game.seats[room.game.turnIndex]?.color;
+    const seat = room.game.seats.find((s) => s.color === color);
+    if (!seat || seat.playerId !== socket.data.playerId) return;
+    if (room.game.action !== "roll") return;
+    socket.to(room.code).emit("rolling", { color });
+  });
+
   socket.on("roll", () => {
     const room = getRoom(socket.data.roomCode);
     if (!room || room.busy) return;
@@ -223,6 +234,23 @@ io.on("connection", (socket) => {
     }
     broadcast(room, io);
     if (room.game && isAiTurn(room)) maybeContinueAi(room, io);
+  });
+
+  socket.on("chat", (raw) => {
+    const room = getRoom(socket.data.roomCode);
+    if (!room) return;
+    const p = room.players.find((x) => x.playerId === socket.data.playerId);
+    if (!p) return;
+    const result = takeChat(socket.data, raw);
+    if (!result.ok) {
+      socket.emit("errorMsg", result.error);
+      return;
+    }
+    io.to(room.code).emit("chat", {
+      nickname: p.nickname,
+      text: result.text,
+      playerId: p.playerId,
+    });
   });
 });
 
@@ -316,6 +344,23 @@ minesNsp.on("connection", (socket) => {
     if (!room) return;
     handleDisconnect(room, socket.data.playerId);
     broadcastMines(room, minesNsp);
+  });
+
+  socket.on("chat", (raw) => {
+    const room = getMinesRoom(socket.data.roomCode);
+    if (!room) return;
+    const p = room.players.find((x) => x.playerId === socket.data.playerId);
+    if (!p) return;
+    const result = takeChat(socket.data, raw);
+    if (!result.ok) {
+      socket.emit("errorMsg", result.error);
+      return;
+    }
+    minesNsp.to(room.code).emit("chat", {
+      nickname: p.nickname,
+      text: result.text,
+      playerId: p.playerId,
+    });
   });
 });
 
