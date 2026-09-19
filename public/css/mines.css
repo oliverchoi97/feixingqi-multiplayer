@@ -18,7 +18,9 @@
 }
 
 .ms-board-scroll {
-  width: 100%;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   border-radius: 16px;
