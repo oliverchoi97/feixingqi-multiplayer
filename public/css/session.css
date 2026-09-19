@@ -1,0 +1,20 @@
+.session-actions,
+.session-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.session-strip {
+  margin-top: 10px;
+}
+
+.session-actions .btn,
+.session-strip .btn {
+  padding: 8px 12px;
+  font-size: 0.86rem;
+}
+
+#session-confirm {
+  z-index: 40;
+}

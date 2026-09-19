@@ -21,6 +21,12 @@
   }
 }
 
+@media (min-width: 960px) {
+  .game-cards {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
 .game-card {
   display: grid;
   gap: 8px;

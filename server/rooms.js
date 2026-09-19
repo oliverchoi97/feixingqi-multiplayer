@@ -323,3 +323,20 @@ export function handleMove(room, playerId, pieceId) {
   }
   return chooseMove(room.game, pieceId);
 }
+
+export function endMatch(room) {
+  clearTimers(room);
+  room.busy = false;
+  room.game = null;
+  room.players = room.players.filter((p) => p.type === "human");
+  for (const p of room.players) p.ready = false;
+  return { ok: true };
+}
+
+export function removePlayer(room, playerId) {
+  room.players = room.players.filter((p) => p.playerId !== playerId);
+  if (room.hostId === playerId) {
+    const next = room.players.find((p) => p.type === "human");
+    if (next) room.hostId = next.playerId;
+  }
+}

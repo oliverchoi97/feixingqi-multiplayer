@@ -9,6 +9,7 @@ import {
   toggleFlag,
 } from "/shared/mines.js";
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
+import { bindSessionButtons } from "./session-nav.js";
 
 const socket = window.io("/mines");
 const $ = (id) => document.getElementById(id);
@@ -82,6 +83,20 @@ $("btn-again").onclick = () => {
 $("btn-rewind").onclick = rewindSolo;
 
 bindChatBar($("chat-bar"), { onSend: sendChat });
+bindSessionButtons({
+  socket,
+  lobbyPath: "/minesweeper",
+  hasRoom: () => mode !== "hub",
+  onGoLobby: () => {
+    stopTimer();
+    mode = "hub";
+    solo = null;
+    race = null;
+    $("winner-modal").hidden = true;
+    history.replaceState({}, "", "/minesweeper");
+    show("hub");
+  },
+});
 
 $("ms-board").addEventListener("click", (e) => {
   const i = cellIndex(e.target);

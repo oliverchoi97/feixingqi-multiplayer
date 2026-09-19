@@ -1,5 +1,6 @@
 import { BoardView, COLOR_META, colorTitle } from "./render.js";
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
+import { bindSessionButtons } from "./session-nav.js";
 
 const socket = window.io();
 
@@ -61,12 +62,27 @@ $("btn-copy").onclick = async () => {
   }
 };
 $("btn-leave").onclick = () => location.assign("/feixingqi");
-$("btn-home").onclick = () => location.assign("/feixingqi");
+$("btn-home").onclick = () => socket.emit("endMatch");
 $("btn-rules").onclick = () => $("modal").hidden = false;
 $("btn-close-rules").onclick = () => $("modal").hidden = true;
 $("btn-roll").onclick = () => requestRoll();
 bindCenterDie();
 bindChatBar($("chat-bar"), { onSend: sendChat });
+bindSessionButtons({
+  socket,
+  lobbyPath: "/feixingqi",
+  hasRoom: () => Boolean(lobby || game),
+  onGoLobby: () => {
+    game = null;
+    moving = false;
+    dicePlaying = false;
+    $("winner-modal").hidden = true;
+    if (lobby) {
+      show("lobby");
+      renderLobby(lobby);
+    } else show("home");
+  },
+});
 
 $("board").addEventListener("click", (e) => {
   if (!game?.yourTurn || game.action !== "select" || moving) return;

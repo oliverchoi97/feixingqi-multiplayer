@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   chooseColor,
   createRoom,
+  endMatch,
   joinRoom,
   lobbyView,
   setReady,
@@ -58,5 +59,16 @@ describe("lobby color pick", () => {
     const host = room.players.find((p) => p.playerId === "h");
     assert.equal(host.color, "blue");
     assert.equal(host.type, "human");
+  });
+
+  it("endMatch clears the board and AI, keeping humans in lobby", () => {
+    const room = hostRoom();
+    chooseColor(room, "h", "red");
+    setReady(room, "h", true);
+    startGame(room);
+    endMatch(room);
+    assert.equal(room.game, null);
+    assert.equal(room.players.every((p) => p.type === "human"), true);
+    assert.equal(room.players[0].ready, false);
   });
 });

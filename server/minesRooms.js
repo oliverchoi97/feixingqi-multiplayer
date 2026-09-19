@@ -196,6 +196,12 @@ function finish(room, winnerId, reason) {
   room.game.endedAt = Date.now();
 }
 
+export function endMinesMatch(room) {
+  room.game = null;
+  for (const p of room.players) p.ready = false;
+  return { ok: true };
+}
+
 export function broadcastMines(room, nsp) {
   for (const p of room.players) {
     if (!p.socketId) continue;

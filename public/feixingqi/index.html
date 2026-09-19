@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="/css/style.css" />
     <link rel="stylesheet" href="/css/portal.css" />
     <link rel="stylesheet" href="/css/danmaku.css" />
+    <link rel="stylesheet" href="/css/session.css" />
   </head>
   <body>
     <div id="toast" hidden></div>
@@ -46,6 +47,10 @@
           </div>
         </div>
         <p class="hint">規則採傳統玩法：擲 6 起飛、同色跳四格、虛線飛航、終點反彈。</p>
+        <div class="session-strip">
+          <button type="button" class="btn ghost" data-session="end">結束遊戲</button>
+          <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
+        </div>
       </div>
     </section>
 
@@ -68,6 +73,10 @@
           <button id="btn-ready" class="btn primary" type="button">準備</button>
           <button id="btn-start" class="btn" type="button" hidden>開始遊戲</button>
         </div>
+        <div class="session-strip">
+          <button type="button" class="btn ghost" data-session="end">結束遊戲</button>
+          <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
+        </div>
       </div>
     </section>
 
@@ -89,6 +98,10 @@
         </div>
         <ol id="log" class="log"></ol>
         <button id="btn-rules" class="btn ghost wide" type="button">規則說明</button>
+        <div class="session-strip">
+          <button type="button" class="btn ghost" data-session="end">結束遊戲</button>
+          <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
+        </div>
       </aside>
       <div class="board-wrap">
         <img class="board-art" src="/board.svg" alt="飛行棋棋盤" />
@@ -132,7 +145,10 @@
         <p class="eyebrow">完賽</p>
         <h3 id="winner-title">黃方獲勝</h3>
         <ol id="winner-ranks"></ol>
-        <button id="btn-home" class="btn primary" type="button">返回大廳</button>
+        <div class="session-strip">
+          <button id="btn-home" class="btn primary" type="button">返回大廳</button>
+          <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
+        </div>
       </div>
     </div>
 
