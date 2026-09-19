@@ -16,8 +16,10 @@ let game = null;
 let readyOn = false;
 let moving = false;
 let diceTimer = 0;
+let diceHoldTimer = 0;
 let movingTimer = 0;
 let dicePlaying = false;
+let swipe = null;
 
 const params = new URLSearchParams(location.search);
 if (params.get("room")) $("join-code").value = params.get("room").toUpperCase();
@@ -55,11 +57,8 @@ $("btn-leave").onclick = () => location.assign("/");
 $("btn-home").onclick = () => location.assign("/");
 $("btn-rules").onclick = () => $("modal").hidden = false;
 $("btn-close-rules").onclick = () => $("modal").hidden = true;
-$("btn-roll").onclick = () => {
-  if (!game?.yourTurn || game.action !== "roll" || moving) return;
-  $("btn-roll").disabled = true;
-  socket.emit("roll");
-};
+$("btn-roll").onclick = () => requestRoll();
+bindCenterDie();
 
 $("board").addEventListener("click", (e) => {
   if (!game?.yourTurn || game.action !== "select" || moving) return;
@@ -96,8 +95,7 @@ socket.on("state", (view) => {
 });
 
 socket.on("rolled", ({ roll, threeSixes }) => {
-  animateDice(roll, () => {
-    setDice(roll);
+  beginDiceResult(roll, () => {
     if (threeSixes) toast("三次六返大陸！");
     tryAutoMove();
   });
@@ -110,6 +108,10 @@ socket.on("moved", ({ sim }) => {
 socket.on("errorMsg", (msg) => {
   toast(msg);
   moving = false;
+  dicePlaying = false;
+  stopShuffleFaces();
+  $("center-die").classList.remove("rolling", "fling", "dragging");
+  $("dice").classList.remove("rolling");
   if (game) {
     renderGame(game);
     board.setState(game, game.legalPieceIds || []);
@@ -156,21 +158,33 @@ function renderGame(view) {
   $("game-code").textContent = view.code;
   const meta = COLOR_META[view.turnColor];
   const yours = view.yourTurn;
-  $("turn-banner").textContent =
+  const turnText =
     view.phase === "ended"
       ? "對局結束"
       : yours
         ? `輪到你（${meta.nameZh}）`
         : `輪到${meta.nameZh}方`;
-  $("btn-roll").disabled = !(yours && view.action === "roll") || moving;
+  $("turn-banner").textContent = turnText;
+  $("board-hud").textContent = turnText;
+  $("btn-roll").disabled = !(yours && view.action === "roll") || moving || dicePlaying;
   renderPiecePicks(view);
   $("roll-hint").textContent =
     view.action === "select" && yours
-      ? "點選高亮的飛機，或按下方按鈕走棋。"
-      : view.lastRoll
-        ? `上一骰：${view.lastRoll}${view.consecutiveSixes ? `（連續 ${view.consecutiveSixes} 次 6）` : ""}`
-        : "輪到你時按下擲骰。";
-  if (view.lastRoll) setDice(view.lastRoll);
+      ? "點選高亮的圓形棋子，或按下方按鈕走棋。"
+      : yours && view.action === "roll"
+        ? "在棋盤中央向上滑動骰子（也可點一下）。"
+        : view.lastRoll
+          ? `上一骰：${view.lastRoll}${view.consecutiveSixes ? `（連續 ${view.consecutiveSixes} 次 6）` : ""}`
+          : "等待對手擲骰。";
+  const last = $("last-roll");
+  if (view.lastRoll) {
+    last.hidden = false;
+    last.textContent = `上一骰 ${view.lastRoll}`;
+    if (!dicePlaying) setDice(view.lastRoll);
+  } else {
+    last.hidden = true;
+  }
+  syncCenterDice();
 
   $("player-list").innerHTML = view.seats
     .map((s) => {
@@ -241,6 +255,7 @@ function sendMove(pieceId) {
   $("btn-roll").disabled = true;
   $("piece-picks").hidden = true;
   board.setState(game, []);
+  syncCenterDice();
   clearTimeout(movingTimer);
   movingTimer = setTimeout(() => {
     moving = false;
@@ -252,6 +267,7 @@ function sendMove(pieceId) {
 function beginMoving(sim) {
   moving = true;
   $("btn-roll").disabled = true;
+  syncCenterDice();
   clearTimeout(movingTimer);
   movingTimer = setTimeout(() => {
     moving = false;
@@ -264,22 +280,132 @@ function beginMoving(sim) {
   });
 }
 
-function animateDice(value, done) {
-  const el = $("dice");
-  el.classList.add("rolling");
+function canRoll() {
+  return Boolean(
+    game?.yourTurn && game.action === "roll" && !moving && !dicePlaying && game.phase !== "ended"
+  );
+}
+
+function requestRoll() {
+  if (!canRoll()) return;
   dicePlaying = true;
-  let n = 0;
-  clearInterval(diceTimer);
-  diceTimer = setInterval(() => {
-    setDice(1 + Math.floor(Math.random() * 6));
-    if (++n > 8) {
-      clearInterval(diceTimer);
-      el.classList.remove("rolling");
-      setDice(value);
-      dicePlaying = false;
-      done?.();
+  $("btn-roll").disabled = true;
+  const die = $("center-die");
+  die.classList.add("fling", "rolling");
+  $("dice").classList.add("rolling");
+  setCenterMode("rolling");
+  $("center-die-hint").textContent = "擲骰中";
+  startShuffleFaces();
+  socket.emit("roll");
+}
+
+function bindCenterDie() {
+  const hit = $("center-die-hit");
+  const die = $("center-die");
+
+  const endSwipe = (e) => {
+    if (!swipe || swipe.id !== e.pointerId) return;
+    const dt = Math.max(16, performance.now() - swipe.t);
+    const dy = swipe.dy;
+    const vx = Math.abs(e.clientX - swipe.x);
+    const vy = dy / dt;
+    const flicked = dy < -40 || vy < -0.42;
+    const tapped = Math.abs(dy) < 16 && vx < 16 && dt < 520;
+    try {
+      hit.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
     }
-  }, 70);
+    die.classList.remove("dragging");
+    die.style.setProperty("--drag-y", "0px");
+    swipe = null;
+    if (flicked || tapped) requestRoll();
+  };
+
+  hit.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!canRoll()) return;
+      e.preventDefault();
+      hit.setPointerCapture(e.pointerId);
+      swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), dy: 0 };
+      die.classList.add("dragging");
+      die.classList.remove("fling");
+    },
+    { passive: false }
+  );
+
+  hit.addEventListener(
+    "pointermove",
+    (e) => {
+      if (!swipe || swipe.id !== e.pointerId) return;
+      e.preventDefault();
+      swipe.dy = e.clientY - swipe.y;
+      const lift = Math.max(-96, Math.min(16, swipe.dy));
+      die.style.setProperty("--drag-y", `${lift}px`);
+    },
+    { passive: false }
+  );
+
+  hit.addEventListener("pointerup", endSwipe);
+  hit.addEventListener("pointercancel", endSwipe);
+
+  hit.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      requestRoll();
+    }
+  });
+}
+
+function beginDiceResult(value, done) {
+  dicePlaying = true;
+  setCenterMode("rolling");
+  $("center-die").classList.add("rolling");
+  $("dice").classList.add("rolling");
+  if (!diceTimer) startShuffleFaces();
+  clearTimeout(diceHoldTimer);
+  diceHoldTimer = setTimeout(() => {
+    stopShuffleFaces();
+    $("center-die").classList.remove("rolling", "fling", "dragging");
+    $("dice").classList.remove("rolling");
+    $("center-die").style.setProperty("--drag-y", "0px");
+    setDice(value);
+    setCenterMode("result");
+    $("center-die-hint").textContent = `擲出 ${value}`;
+    diceHoldTimer = setTimeout(() => {
+      dicePlaying = false;
+      syncCenterDice();
+      done?.();
+    }, 720);
+  }, 420);
+}
+
+function startShuffleFaces() {
+  clearInterval(diceTimer);
+  diceTimer = setInterval(() => setDice(1 + Math.floor(Math.random() * 6)), 60);
+}
+
+function stopShuffleFaces() {
+  clearInterval(diceTimer);
+  diceTimer = 0;
+}
+
+function setCenterMode(mode) {
+  const el = $("center-dice");
+  el.dataset.mode = mode;
+  el.setAttribute("aria-hidden", mode === "off" ? "true" : "false");
+}
+
+function syncCenterDice() {
+  if (dicePlaying) return;
+  if (canRoll()) {
+    setCenterMode("ready");
+    $("center-die-hint").textContent = "向上滑動擲骰";
+    $("center-die-hit").setAttribute("aria-label", "向上滑動擲骰");
+  } else {
+    setCenterMode("off");
+  }
 }
 
 function setDice(v) {

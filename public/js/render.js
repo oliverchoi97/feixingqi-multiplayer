@@ -1,7 +1,6 @@
 import {
   COLOR_META,
   COLORS,
-  TRACK,
   pieceScreenPos,
   waypointScreenPos,
 } from "/shared/board.js";
@@ -12,6 +11,9 @@ const PIP_COLORS = {
   red: "#d42323",
   blue: "#1a4fd8",
 };
+
+const TOKEN_R = 24;
+const HIT_R = 64;
 
 export class BoardView {
   constructor(canvas) {
@@ -72,7 +74,7 @@ export class BoardView {
     const x = ((clientX - rect.left) / rect.width) * 950;
     const y = ((clientY - rect.top) / rect.height) * 950;
     let best = null;
-    let bestD = 56;
+    let bestD = HIT_R;
     const color = this.state.yourColor;
     const list = color ? this.state.planes[color] : [];
     for (const plane of list) {
@@ -149,10 +151,6 @@ export class BoardView {
 
     const stacks = new Map();
     for (const g of groups) {
-      const k =
-        g.plane.loc === "hangar" || g.plane.loc === "finished"
-          ? `${g.color}-h-${g.plane.slot}`
-          : `${g.plane.loc}-${g.color === "home" ? g.color : ""}-${g.plane.index}`;
       if (g.plane.loc === "track") {
         const key = `track-${g.plane.index}`;
         if (!stacks.has(key)) stacks.set(key, []);
@@ -162,17 +160,23 @@ export class BoardView {
         if (!stacks.has(key)) stacks.set(key, []);
         stacks.get(key).push(g);
       } else {
-        this.drawPlane(g.x, g.y, g.color, g.plane, 0, this.legal.has(g.plane.id) && this.state.yourColor === g.color);
+        this.drawToken(
+          g.x,
+          g.y,
+          g.color,
+          g.plane,
+          this.legal.has(g.plane.id) && this.state.yourColor === g.color
+        );
       }
     }
 
     for (const list of stacks.values()) {
       list.forEach((g, i) => {
-        const ox = (i - (list.length - 1) / 2) * 11;
-        const oy = (i - (list.length - 1) / 2) * -8;
+        const ox = (i - (list.length - 1) / 2) * 12;
+        const oy = (i - (list.length - 1) / 2) * -9;
         const legal =
           this.legal.has(g.plane.id) && this.state.yourColor === g.color && this.state.yourTurn;
-        this.drawPlane(g.x + ox, g.y + oy, g.color, g.plane, heading(g, this.state), legal);
+        this.drawToken(g.x + ox, g.y + oy, g.color, g.plane, legal);
       });
     }
   }
@@ -189,67 +193,93 @@ export class BoardView {
       const [x, y] = pos;
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 180);
       ctx.beginPath();
-      ctx.arc(x, y, 26 + pulse * 4, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(255, 248, 200, ${0.4 + pulse * 0.4})`;
-      ctx.lineWidth = 4;
+      ctx.arc(x, y, TOKEN_R + 8 + pulse * 5, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 248, 200, ${0.45 + pulse * 0.45})`;
+      ctx.lineWidth = 5;
       ctx.stroke();
     }
   }
 
-  drawPlane(x, y, color, plane, angle, legal) {
+  drawToken(x, y, color, plane, legal) {
     const ctx = this.ctx;
+    const r = TOKEN_R;
+    const finished = plane.loc === "finished";
+    const base = finished ? shade(PIP_COLORS[color], -0.38) : PIP_COLORS[color];
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(angle || 0);
-    const finished = plane.loc === "finished";
-    const fill = finished ? shade(PIP_COLORS[color], -0.35) : PIP_COLORS[color];
-    ctx.fillStyle = fill;
+
+    ctx.beginPath();
+    ctx.ellipse(2.2, 3.2, r * 0.96, r * 0.88, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(20, 12, 6, 0.32)";
+    ctx.fill();
+
+    const g = ctx.createRadialGradient(-r * 0.32, -r * 0.38, r * 0.12, 0, 0, r);
+    g.addColorStop(0, shade(base, 0.28));
+    g.addColorStop(0.55, base);
+    g.addColorStop(1, shade(base, -0.28));
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.lineWidth = 2.4;
     ctx.strokeStyle = "#1b120b";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(16, 0);
-    ctx.lineTo(-6, 9);
-    ctx.lineTo(-2, 3);
-    ctx.lineTo(-14, 5);
-    ctx.lineTo(-14, -5);
-    ctx.lineTo(-2, -3);
-    ctx.lineTo(-6, -9);
-    ctx.closePath();
-    ctx.fill();
     ctx.stroke();
+
     ctx.beginPath();
-    ctx.arc(4, 0, 2.4, 0, Math.PI * 2);
-    ctx.fillStyle = "#fff8e8";
-    ctx.fill();
+    ctx.arc(0, 0, r - 3.6, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255, 248, 232, 0.42)";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
     if (finished) {
-      ctx.rotate(0.2);
       ctx.fillStyle = "#fff8e8";
-      ctx.font = "700 11px sans-serif";
-      ctx.fillText("完", -8, 4);
+      ctx.font = "800 13px 'Noto Sans TC', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("完", 0, 1);
+    } else {
+      ctx.save();
+      ctx.translate(0, -4);
+      drawPlaneMark(ctx, r);
+      ctx.restore();
+      ctx.fillStyle = "rgba(27, 18, 11, 0.78)";
+      ctx.font = "800 10px 'Noto Sans TC', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(plane.id + 1), 0, r * 0.52);
     }
+
     if (legal) {
       ctx.beginPath();
-      ctx.arc(0, 0, 20, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255,255,255,0.85)";
-      ctx.lineWidth = 2;
+      ctx.arc(0, 0, r + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.92)";
+      ctx.lineWidth = 3;
       ctx.stroke();
     }
     ctx.restore();
   }
 }
 
-function heading(g, state) {
-  if (g.plane.loc !== "track") {
-    if (g.color === "yellow") return 0;
-    if (g.color === "green") return Math.PI / 2;
-    if (g.color === "red") return Math.PI;
-    return -Math.PI / 2;
-  }
-  const i = g.plane.index;
-  const a = TRACK[i];
-  const b = TRACK[(i + 1) % 52];
-  if (!a || !b) return 0;
-  return Math.atan2(b[1] - a[1], b[0] - a[0]);
+function drawPlaneMark(ctx, r) {
+  const s = r / 24;
+  ctx.save();
+  ctx.scale(s, s);
+  ctx.fillStyle = "#fff8e8";
+  ctx.beginPath();
+  ctx.moveTo(0, -11);
+  ctx.lineTo(6.2, 3.2);
+  ctx.lineTo(1.8, 1.4);
+  ctx.lineTo(3.2, 10);
+  ctx.lineTo(0, 7.2);
+  ctx.lineTo(-3.2, 10);
+  ctx.lineTo(-1.8, 1.4);
+  ctx.lineTo(-6.2, 3.2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "rgba(27, 18, 11, 0.28)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
 }
 
 function shade(hex, amt) {

@@ -296,22 +296,116 @@ input:focus {
   padding: 8px 0 4px;
 }
 
+.last-roll {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.board-hud {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+  max-width: calc(100% - 20px);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.92);
+  border: 1px solid rgba(42, 31, 20, 0.16);
+  box-shadow: 0 8px 20px rgba(42, 31, 20, 0.16);
+  font-weight: 800;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.center-dice {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.center-dice[data-mode="ready"],
+.center-dice[data-mode="rolling"],
+.center-dice[data-mode="result"] {
+  opacity: 1;
+}
+
+.center-dice[data-mode="ready"]::before {
+  content: "";
+  position: absolute;
+  inset: 16%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(42, 31, 20, 0.42) 0%,
+    rgba(42, 31, 20, 0.14) 42%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.center-die-hit {
+  position: relative;
+  width: min(52%, 220px);
+  height: min(58%, 250px);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+}
+
+.center-dice[data-mode="ready"] .center-die-hit {
+  pointer-events: auto;
+}
+
+.center-die {
+  width: min(42vw, 148px);
+  height: min(42vw, 148px);
+  display: grid;
+  place-items: center;
+  transform: translateY(var(--drag-y, 0px));
+  transition: transform 0.12s ease-out;
+  filter: drop-shadow(0 16px 18px rgba(42, 31, 20, 0.35));
+}
+
+.center-dice[data-mode="ready"] .center-die {
+  animation: die-idle 1.8s ease-in-out infinite;
+}
+
+.center-die.dragging {
+  animation: none;
+  transition: none;
+}
+
 .dice {
-  width: 72px;
-  height: 72px;
-  perspective: 200px;
+  width: 100%;
+  height: 100%;
   position: relative;
 }
 
 .dice-face {
   position: absolute;
   inset: 0;
-  border-radius: 14px;
-  background: #fffdf8;
-  border: 2px solid #2a1f14;
+  border-radius: 22%;
+  background:
+    radial-gradient(circle at 32% 28%, #ffffff 0%, #fff6e4 42%, #f0d9b0 100%);
+  border: 3px solid #1b120b;
   display: none;
   place-items: center;
-  box-shadow: inset 0 0 0 3px #f3e2c0;
+  box-shadow:
+    inset 0 0 0 6px rgba(243, 226, 192, 0.85),
+    inset 0 -10px 16px rgba(42, 31, 20, 0.12);
 }
 
 .dice[data-face="1"] .dice-face[data-v="1"],
@@ -325,48 +419,86 @@ input:focus {
 
 .dice-face::after {
   content: "";
-  width: 70%;
-  height: 70%;
+  width: 72%;
+  height: 72%;
   background: currentColor;
   color: #1b120b;
   -webkit-mask: var(--pips) center / contain no-repeat;
   mask: var(--pips) center / contain no-repeat;
 }
 
-.dice-face[data-v="1"] { --pips: radial-gradient(circle, #1b120b 8px, transparent 9px); }
+.dice-face[data-v="1"] { --pips: radial-gradient(circle, #9c1c1c 18%, transparent 19.5%); }
 .dice-face[data-v="2"] {
-  --pips: radial-gradient(circle at 28% 28%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 72% 72%, #1b120b 6px, transparent 7px);
+  --pips: radial-gradient(circle at 28% 28%, #1b120b 14%, transparent 15.5%),
+    radial-gradient(circle at 72% 72%, #1b120b 14%, transparent 15.5%);
 }
 .dice-face[data-v="3"] {
-  --pips: radial-gradient(circle at 25% 25%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 50% 50%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 75% 75%, #1b120b 6px, transparent 7px);
+  --pips: radial-gradient(circle at 25% 25%, #1b120b 13%, transparent 14.5%),
+    radial-gradient(circle at 50% 50%, #9c1c1c 13%, transparent 14.5%),
+    radial-gradient(circle at 75% 75%, #1b120b 13%, transparent 14.5%);
 }
 .dice-face[data-v="4"] {
-  --pips: radial-gradient(circle at 28% 28%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 72% 28%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 28% 72%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 72% 72%, #1b120b 6px, transparent 7px);
+  --pips: radial-gradient(circle at 28% 28%, #1b120b 13%, transparent 14.5%),
+    radial-gradient(circle at 72% 28%, #1b120b 13%, transparent 14.5%),
+    radial-gradient(circle at 28% 72%, #1b120b 13%, transparent 14.5%),
+    radial-gradient(circle at 72% 72%, #1b120b 13%, transparent 14.5%);
 }
 .dice-face[data-v="5"] {
-  --pips: radial-gradient(circle at 28% 28%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 72% 28%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 50% 50%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 28% 72%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 72% 72%, #1b120b 6px, transparent 7px);
+  --pips: radial-gradient(circle at 28% 28%, #1b120b 12%, transparent 13.5%),
+    radial-gradient(circle at 72% 28%, #1b120b 12%, transparent 13.5%),
+    radial-gradient(circle at 50% 50%, #9c1c1c 12%, transparent 13.5%),
+    radial-gradient(circle at 28% 72%, #1b120b 12%, transparent 13.5%),
+    radial-gradient(circle at 72% 72%, #1b120b 12%, transparent 13.5%);
 }
 .dice-face[data-v="6"] {
-  --pips: radial-gradient(circle at 28% 24%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 72% 24%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 28% 50%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 72% 50%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 28% 76%, #1b120b 6px, transparent 7px),
-    radial-gradient(circle at 72% 76%, #1b120b 6px, transparent 7px);
+  --pips: radial-gradient(circle at 28% 22%, #1b120b 11%, transparent 12.5%),
+    radial-gradient(circle at 72% 22%, #1b120b 11%, transparent 12.5%),
+    radial-gradient(circle at 28% 50%, #1b120b 11%, transparent 12.5%),
+    radial-gradient(circle at 72% 50%, #1b120b 11%, transparent 12.5%),
+    radial-gradient(circle at 28% 78%, #1b120b 11%, transparent 12.5%),
+    radial-gradient(circle at 72% 78%, #1b120b 11%, transparent 12.5%);
 }
 
-.dice.rolling {
-  animation: shake 0.55s linear infinite;
+.center-die-hint {
+  margin: 0;
+  color: #fff8e8;
+  font-weight: 800;
+  font-size: clamp(0.82rem, 3.4vw, 1rem);
+  text-shadow: 0 2px 8px rgba(42, 31, 20, 0.7);
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+
+.center-dice[data-mode="off"] .center-die-hint,
+.center-dice[data-mode="rolling"] .center-die-hint {
+  opacity: 0.9;
+}
+
+.dice.rolling,
+.center-die.rolling .dice {
+  animation: tumble 0.55s linear infinite;
+}
+
+.center-die.fling {
+  animation: fling-up 0.42s ease-out;
+}
+
+@keyframes die-idle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-7px) scale(1.03); }
+}
+
+@keyframes tumble {
+  0% { transform: rotate(-18deg) scale(1.05); }
+  35% { transform: rotate(22deg) scale(0.94); }
+  70% { transform: rotate(-14deg) scale(1.08); }
+  100% { transform: rotate(10deg) scale(1); }
+}
+
+@keyframes fling-up {
+  0% { transform: translateY(var(--drag-y, 0px)) rotate(0); }
+  45% { transform: translateY(-72px) rotate(-28deg) scale(1.1); }
+  100% { transform: translateY(0) rotate(12deg) scale(1); }
 }
 
 @keyframes shake {
@@ -396,6 +528,7 @@ input:focus {
   overflow: hidden;
   box-shadow: var(--shadow);
   background: #ccc;
+  touch-action: manipulation;
 }
 
 .board-art,
@@ -476,17 +609,47 @@ input:focus {
 }
 
 @media (max-width: 960px) {
+  .screen {
+    padding: 10px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
   .game-screen {
     grid-template-columns: 1fr;
-    padding-top: 12px;
+    padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+    gap: 10px;
+    overscroll-behavior: none;
   }
 
   .panel {
     order: 2;
+    padding: 12px;
+    border-radius: 18px;
+    gap: 8px;
   }
 
   .board-wrap {
-    width: min(100%, 92dvw);
+    width: min(100%, calc(100dvw - 16px));
+    max-height: min(calc(100dvw - 16px), 72dvh);
     order: 1;
+    border-radius: 18px;
+  }
+
+  .center-die {
+    width: min(42vw, 136px);
+    height: min(42vw, 136px);
+  }
+
+  .log {
+    max-height: 72px;
+  }
+
+  .panel-top {
+    align-items: center;
+  }
+
+  .turn-banner {
+    font-size: 0.78rem;
+    padding: 6px 10px;
   }
 }

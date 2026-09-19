@@ -75,17 +75,10 @@
         </div>
         <div id="player-list" class="player-list"></div>
         <div class="dice-block">
-          <div class="dice" id="dice" data-face="1" aria-hidden="true">
-            <div class="dice-face" data-v="1"></div>
-            <div class="dice-face" data-v="2"></div>
-            <div class="dice-face" data-v="3"></div>
-            <div class="dice-face" data-v="4"></div>
-            <div class="dice-face" data-v="5"></div>
-            <div class="dice-face" data-v="6"></div>
-          </div>
+          <p id="last-roll" class="last-roll" hidden></p>
           <button id="btn-roll" class="btn primary wide" type="button" disabled>擲骰</button>
           <div id="piece-picks" class="piece-picks" hidden></div>
-          <p id="roll-hint" class="hint">輪到你時按下擲骰。若有多架可走，請點選棋盤上的飛機或下方按鈕。</p>
+          <p id="roll-hint" class="hint">輪到你時，在棋盤中央向上滑動骰子（也可點一下）。</p>
         </div>
         <ol id="log" class="log"></ol>
         <button id="btn-rules" class="btn ghost wide" type="button">規則說明</button>
@@ -93,6 +86,22 @@
       <div class="board-wrap">
         <img class="board-art" src="/board.svg" alt="飛行棋棋盤" />
         <canvas id="board" width="950" height="950"></canvas>
+        <div id="board-hud" class="board-hud" aria-hidden="true"></div>
+        <div id="center-dice" class="center-dice" data-mode="off" aria-hidden="true">
+          <div id="center-die-hit" class="center-die-hit" role="button" tabindex="0" aria-label="向上滑動擲骰">
+            <div id="center-die" class="center-die">
+              <div class="dice" id="dice" data-face="1">
+                <div class="dice-face" data-v="1"></div>
+                <div class="dice-face" data-v="2"></div>
+                <div class="dice-face" data-v="3"></div>
+                <div class="dice-face" data-v="4"></div>
+                <div class="dice-face" data-v="5"></div>
+                <div class="dice-face" data-v="6"></div>
+              </div>
+            </div>
+            <p id="center-die-hint" class="center-die-hint">向上滑動擲骰</p>
+          </div>
+        </div>
       </div>
     </section>
 
