@@ -3,7 +3,8 @@ services:
     name: fei-xing-qi
     runtime: node
     plan: free
-    buildCommand: npm ci
+    numInstances: 1
+    buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /healthz
     envVars:

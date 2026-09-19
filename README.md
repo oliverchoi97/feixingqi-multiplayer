@@ -27,7 +27,7 @@ npm test
 
 伺服器綁定 `0.0.0.0` 與 `process.env.PORT`（平台會注入）。房間狀態在記憶體裡，**請保持單一實例**，不要水平擴充。
 
-- Render：接上這個 repo 後會讀 `render.yaml`（免費方案會在閒置後休眠，第一次開啟可能要等約一分鐘）。
+- Render：Blueprint 檔是 `render.yaml`（免費 Web Service、`npm install` / `npm start`、健康檢查 `/healthz`、`numInstances: 1`）。把 **GitHub 公開鏡像**接到 Render；閒置後會休眠，第一次開啟可能要等約一分鐘。
 - Fly.io：`fly launch` / `fly deploy`（`fly.toml` + `Dockerfile`）。
 - Railway：`npm start`，讀 `Procfile`。
 
