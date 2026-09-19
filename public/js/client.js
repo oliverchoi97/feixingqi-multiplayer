@@ -45,7 +45,7 @@ $("btn-ready").onclick = () => {
 $("btn-start").onclick = () => socket.emit("start");
 $("btn-copy").onclick = async () => {
   if (!lobby) return;
-  const url = `${location.origin}/?room=${lobby.code}`;
+  const url = `${location.origin}/feixingqi?room=${lobby.code}`;
   try {
     await navigator.clipboard.writeText(url);
     toast("已複製房間連結");
@@ -53,8 +53,8 @@ $("btn-copy").onclick = async () => {
     prompt("複製這個連結", url);
   }
 };
-$("btn-leave").onclick = () => location.assign("/");
-$("btn-home").onclick = () => location.assign("/");
+$("btn-leave").onclick = () => location.assign("/feixingqi");
+$("btn-home").onclick = () => location.assign("/feixingqi");
 $("btn-rules").onclick = () => $("modal").hidden = false;
 $("btn-close-rules").onclick = () => $("modal").hidden = true;
 $("btn-roll").onclick = () => requestRoll();
@@ -72,7 +72,7 @@ socket.on("joined", (payload) => {
   me.playerId = payload.playerId;
   me.room = payload.code;
   saveSession();
-  history.replaceState({}, "", `/?room=${payload.code}`);
+  history.replaceState({}, "", `/feixingqi?room=${payload.code}`);
 });
 
 socket.on("lobby", (view) => {

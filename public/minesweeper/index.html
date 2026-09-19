@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>踩地雷 · Gaming In My Life</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/portal.css" />
+    <link rel="stylesheet" href="/css/mines.css" />
+  </head>
+  <body>
+    <div id="toast" hidden></div>
+
+    <section id="screen-hub" class="screen">
+      <div class="home-card">
+        <nav class="site-nav" style="width:100%;margin:0 0 12px">
+          <a href="/">遊戲選單</a>
+          <a href="/feixingqi">飛行棋</a>
+        </nav>
+        <p class="eyebrow">MINESWEEPER</p>
+        <h1>踩地雷</h1>
+        <p class="lede">單人練習經典初／中／高級，或兩人同圖競速清盤（固定高級 30×16、99 雷）。</p>
+        <div class="ms-diff">
+          <button class="btn primary" type="button" data-solo="A">單人 · 初級 9×9／10 雷</button>
+          <button class="btn" type="button" data-solo="B">單人 · 中級 16×16／40 雷</button>
+          <button class="btn" type="button" data-solo="C">單人 · 高級 30×16／99 雷</button>
+        </div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0" />
+        <p class="hint">雙人競賽：最多 2 人、無電腦。雙方棋盤由同一種子生成，完全相同。</p>
+        <label class="field">
+          <span>暱稱</span>
+          <input id="nickname" maxlength="12" placeholder="怎麼稱呼你" autocomplete="nickname" />
+        </label>
+        <div class="home-actions">
+          <button id="btn-create" class="btn primary" type="button">建立競賽房間</button>
+          <div class="join-row">
+            <input id="join-code" maxlength="4" placeholder="房間代碼" autocomplete="off" spellcheck="false" />
+            <button id="btn-join" class="btn" type="button">加入</button>
+          </div>
+        </div>
+        <p class="hint">
+          競賽：先清完所有安全格者勝；踩雷即出局，對手若仍在場即獲勝。幾乎同時的操作以伺服器先收到的為準。對局中斷線視為棄權。競賽開局即佈雷，第一格不保證安全。
+        </p>
+      </div>
+    </section>
+
+    <section id="screen-lobby" class="screen" hidden>
+      <div class="lobby-card">
+        <header class="lobby-head">
+          <div>
+            <p class="eyebrow">雙人競賽 · 高級</p>
+            <h2>房間 <span id="lobby-code">----</span></h2>
+          </div>
+          <div class="lobby-share">
+            <button id="btn-copy" class="btn ghost" type="button">複製連結</button>
+            <button id="btn-leave" class="btn ghost" type="button">離開</button>
+          </div>
+        </header>
+        <p class="lede tight" id="lobby-status">等待對手加入。兩人都準備後開賽。</p>
+        <div id="lobby-seats" class="seats"></div>
+        <div class="lobby-actions">
+          <button id="btn-ready" class="btn primary" type="button">準備</button>
+          <button id="btn-start" class="btn" type="button" hidden>開始競賽</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-play" class="ms-play" hidden>
+      <div class="ms-hud">
+        <a href="/minesweeper" class="btn ghost" id="btn-back">返回</a>
+        <span id="ms-level" class="ms-stat">初級</span>
+        <span id="ms-mines" class="ms-stat">雷 10</span>
+        <span id="ms-timer" class="ms-stat">0</span>
+        <button id="btn-reset" class="btn" type="button">重開</button>
+      </div>
+      <div id="ms-race" class="ms-race" hidden></div>
+      <div class="ms-board-scroll">
+        <div id="ms-board" class="ms-board"></div>
+      </div>
+    </section>
+
+    <div id="winner-modal" class="modal" hidden>
+      <div class="modal-card winner">
+        <p class="eyebrow">結果</p>
+        <h3 id="winner-title">完成</h3>
+        <p id="winner-detail" class="lede tight"></p>
+        <button id="btn-again" class="btn primary" type="button">再來一局</button>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="/js/mines-client.js"></script>
+  </body>
+</html>

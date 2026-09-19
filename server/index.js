@@ -22,16 +22,47 @@ import {
   setReady,
   startGame,
 } from "./rooms.js";
+import {
+  broadcastMines,
+  createMinesRoom,
+  handleDisconnect,
+  handleFlag,
+  handleReveal,
+  joinMinesRoom,
+  makeId as minesMakeId,
+  minesGameView,
+  setMinesReady,
+  startMinesGame,
+} from "./minesRooms.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 43177);
+const publicDir = path.join(__dirname, "../public");
 const rooms = new Map();
+const minesRooms = new Map();
 
 const app = express();
 app.get("/healthz", (_req, res) => {
   res.status(200).json({ ok: true });
 });
-app.use(express.static(path.join(__dirname, "../public")));
+
+app.get("/", (req, res) => {
+  if (req.query.room) {
+    const code = String(req.query.room).trim().slice(0, 8);
+    return res.redirect(302, `/feixingqi?room=${encodeURIComponent(code)}`);
+  }
+  res.sendFile(path.join(publicDir, "index.html"));
+});
+
+app.get(["/feixingqi", "/feixingqi/"], (_req, res) => {
+  res.sendFile(path.join(publicDir, "feixingqi", "index.html"));
+});
+
+app.get(["/minesweeper", "/minesweeper/"], (_req, res) => {
+  res.sendFile(path.join(publicDir, "minesweeper", "index.html"));
+});
+
+app.use(express.static(publicDir));
 app.use("/shared", express.static(path.join(__dirname, "../shared")));
 
 const server = http.createServer(app);
@@ -40,6 +71,11 @@ const io = new Server(server, { cors: { origin: "*" } });
 function getRoom(code) {
   if (!code) return null;
   return rooms.get(String(code).trim().toUpperCase()) ?? null;
+}
+
+function getMinesRoom(code) {
+  if (!code) return null;
+  return minesRooms.get(String(code).trim().toUpperCase()) ?? null;
 }
 
 function pruneRooms() {
@@ -51,6 +87,10 @@ function pruneRooms() {
       clearTimers(room);
       rooms.delete(code);
     }
+  }
+  for (const [code, room] of minesRooms) {
+    const anyone = room.players.some((p) => p.connected);
+    if (!anyone && now - room.createdAt > 1000 * 60 * 30) minesRooms.delete(code);
   }
 }
 setInterval(pruneRooms, 60_000);
@@ -186,15 +226,118 @@ io.on("connection", (socket) => {
   });
 });
 
-function begin(room) {
-  const result = startGame(room);
-    if (!result.ok) {
-      if (result.error !== "對局已經開始") io.to(room.code).emit("errorMsg", result.error);
+const minesNsp = io.of("/mines");
+minesNsp.on("connection", (socket) => {
+  socket.on("create", ({ nickname, playerId } = {}) => {
+    const id = playerId || minesMakeId();
+    const room = createMinesRoom({
+      playerId: id,
+      nickname: sanitizeName(nickname),
+      socketId: socket.id,
+    });
+    minesRooms.set(room.code, room);
+    socket.data.playerId = id;
+    socket.data.roomCode = room.code;
+    socket.join(room.code);
+    socket.emit("joined", { playerId: id, code: room.code });
+    broadcastMines(room, minesNsp);
+  });
+
+  socket.on("join", ({ code, nickname, playerId } = {}) => {
+    const room = getMinesRoom(code);
+    if (!room) {
+      socket.emit("errorMsg", "找不到這個房間");
       return;
     }
+    const id = playerId || minesMakeId();
+    const result = joinMinesRoom(room, {
+      playerId: id,
+      nickname: sanitizeName(nickname),
+      socketId: socket.id,
+    });
+    if (!result.ok) {
+      socket.emit("errorMsg", result.error);
+      return;
+    }
+    socket.data.playerId = id;
+    socket.data.roomCode = room.code;
+    socket.join(room.code);
+    socket.emit("joined", { playerId: id, code: room.code, rejoin: result.rejoin });
+    broadcastMines(room, minesNsp);
+    if (room.game) {
+      const view = minesGameView(room, id);
+      if (view) socket.emit("state", view);
+    }
+  });
+
+  socket.on("ready", (ready) => {
+    const room = getMinesRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = setMinesReady(room, socket.data.playerId, ready);
+    if (!result.ok) return;
+    broadcastMines(room, minesNsp);
+    if (result.autoStart) beginMines(room);
+  });
+
+  socket.on("start", () => {
+    const room = getMinesRoom(socket.data.roomCode);
+    if (!room) return;
+    if (socket.data.playerId !== room.hostId) {
+      socket.emit("errorMsg", "只有房主可以開始遊戲");
+      return;
+    }
+    beginMines(room);
+  });
+
+  socket.on("reveal", (index) => {
+    const room = getMinesRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = handleReveal(room, socket.data.playerId, index);
+    if (!result.ok) {
+      socket.emit("errorMsg", result.error);
+      return;
+    }
+    broadcastMines(room, minesNsp);
+  });
+
+  socket.on("flag", (index) => {
+    const room = getMinesRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = handleFlag(room, socket.data.playerId, index);
+    if (!result.ok) {
+      socket.emit("errorMsg", result.error);
+      return;
+    }
+    broadcastMines(room, minesNsp);
+  });
+
+  socket.on("disconnect", () => {
+    const room = getMinesRoom(socket.data.roomCode);
+    if (!room) return;
+    handleDisconnect(room, socket.data.playerId);
+    broadcastMines(room, minesNsp);
+  });
+});
+
+function begin(room) {
+  const result = startGame(room);
+  if (!result.ok) {
+    if (result.error !== "對局已經開始") io.to(room.code).emit("errorMsg", result.error);
+    return;
+  }
   broadcast(room, io);
   io.to(room.code).emit("started");
   if (isAiTurn(room)) aiAct(room, io);
+}
+
+function beginMines(room) {
+  const result = startMinesGame(room);
+  if (!result.ok) {
+    if (result.error !== "對局已經開始") minesNsp.to(room.code).emit("errorMsg", result.error);
+    return;
+  }
+  minesNsp.to(room.code).emit("started");
+  broadcastMines(room, minesNsp);
 }
 
 function sanitizeName(name) {
@@ -206,5 +349,5 @@ function sanitizeName(name) {
 }
 
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`飛行棋 server http://127.0.0.1:${PORT}`);
+  console.log(`Gaming In My Life http://127.0.0.1:${PORT}`);
 });

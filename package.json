@@ -1,7 +1,7 @@
 {
-  "name": "fei-xing-qi",
+  "name": "gaming-in-my-life",
   "version": "1.0.0",
-  "description": "多人連線飛行棋（中國經典規則）",
+  "description": "Gaming In My Life：飛行棋與踩地雷",
   "type": "module",
   "main": "server/index.js",
   "scripts": {
