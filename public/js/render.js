@@ -1,6 +1,7 @@
 import {
   COLOR_META,
   COLORS,
+  colorTitle,
   pieceScreenPos,
   waypointScreenPos,
 } from "/shared/board.js";
@@ -12,7 +13,7 @@ const PIP_COLORS = {
   blue: "#1a4fd8",
 };
 
-const TOKEN_R = 24;
+const TOKEN_R = 26;
 const HIT_R = 64;
 
 export class BoardView {
@@ -24,6 +25,7 @@ export class BoardView {
     this.anim = null;
     this.hover = null;
     this.raf = 0;
+    this.images = loadPieceImages();
     this.loop = this.loop.bind(this);
     this.raf = requestAnimationFrame(this.loop);
   }
@@ -204,7 +206,6 @@ export class BoardView {
     const ctx = this.ctx;
     const r = TOKEN_R;
     const finished = plane.loc === "finished";
-    const base = finished ? shade(PIP_COLORS[color], -0.38) : PIP_COLORS[color];
     ctx.save();
     ctx.translate(x, y);
 
@@ -213,22 +214,27 @@ export class BoardView {
     ctx.fillStyle = "rgba(20, 12, 6, 0.32)";
     ctx.fill();
 
-    const g = ctx.createRadialGradient(-r * 0.32, -r * 0.38, r * 0.12, 0, 0, r);
-    g.addColorStop(0, shade(base, 0.28));
-    g.addColorStop(0.55, base);
-    g.addColorStop(1, shade(base, -0.28));
+    const img = this.images[color];
+    ctx.save();
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fillStyle = g;
-    ctx.fill();
-    ctx.lineWidth = 2.4;
-    ctx.strokeStyle = "#1b120b";
-    ctx.stroke();
+    ctx.clip();
+    if (img?.complete && img.naturalWidth) {
+      ctx.drawImage(img, -r, -r, r * 2, r * 2);
+    } else {
+      ctx.fillStyle = finished ? shade(PIP_COLORS[color], -0.38) : PIP_COLORS[color];
+      ctx.fillRect(-r, -r, r * 2, r * 2);
+    }
+    if (finished) {
+      ctx.fillStyle = "rgba(27, 18, 11, 0.46)";
+      ctx.fillRect(-r, -r, r * 2, r * 2);
+    }
+    ctx.restore();
 
     ctx.beginPath();
-    ctx.arc(0, 0, r - 3.6, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255, 248, 232, 0.42)";
-    ctx.lineWidth = 1.6;
+    ctx.arc(0, 0, r - 0.6, 0, Math.PI * 2);
+    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = "#1b120b";
     ctx.stroke();
 
     if (finished) {
@@ -237,16 +243,6 @@ export class BoardView {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("完", 0, 1);
-    } else {
-      ctx.save();
-      ctx.translate(0, -4);
-      drawPlaneMark(ctx, r);
-      ctx.restore();
-      ctx.fillStyle = "rgba(27, 18, 11, 0.78)";
-      ctx.font = "800 10px 'Noto Sans TC', sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(String(plane.id + 1), 0, r * 0.52);
     }
 
     if (legal) {
@@ -260,26 +256,14 @@ export class BoardView {
   }
 }
 
-function drawPlaneMark(ctx, r) {
-  const s = r / 24;
-  ctx.save();
-  ctx.scale(s, s);
-  ctx.fillStyle = "#fff8e8";
-  ctx.beginPath();
-  ctx.moveTo(0, -11);
-  ctx.lineTo(6.2, 3.2);
-  ctx.lineTo(1.8, 1.4);
-  ctx.lineTo(3.2, 10);
-  ctx.lineTo(0, 7.2);
-  ctx.lineTo(-3.2, 10);
-  ctx.lineTo(-1.8, 1.4);
-  ctx.lineTo(-6.2, 3.2);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = "rgba(27, 18, 11, 0.28)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.restore();
+function loadPieceImages() {
+  const images = {};
+  for (const color of COLORS) {
+    const img = new Image();
+    img.src = COLOR_META[color].pieceSrc;
+    images[color] = img;
+  }
+  return images;
 }
 
 function shade(hex, amt) {
@@ -294,4 +278,4 @@ function shade(hex, amt) {
   return `rgb(${r},${g},${b})`;
 }
 
-export { COLOR_META, COLORS };
+export { COLOR_META, COLORS, colorTitle };

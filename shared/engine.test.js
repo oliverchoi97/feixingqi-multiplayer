@@ -247,4 +247,11 @@ describe("path helpers", () => {
       assert.equal(localToGlobal(color, 49), COLOR_META[color].entrance);
     }
   });
+
+  it("maps seats to animal pieces", () => {
+    assert.equal(COLOR_META.yellow.animalZh, "貓");
+    assert.equal(COLOR_META.blue.animalZh, "狗");
+    assert.equal(COLOR_META.green.animalZh, "龜");
+    assert.equal(COLOR_META.red.animalZh, "兔");
+  });
 });

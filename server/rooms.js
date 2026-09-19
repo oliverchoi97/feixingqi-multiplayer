@@ -141,7 +141,7 @@ export function startGame(room) {
     if (room.players.some((p) => p.color === color)) continue;
     room.players.push({
       playerId: `ai-${room.code}-${color}`,
-      nickname: `電腦·${COLOR_META[color].nameZh}`,
+        nickname: `電腦·${COLOR_META[color].nameZh}${COLOR_META[color].animalZh}`,
       color,
       ready: true,
       type: "ai",

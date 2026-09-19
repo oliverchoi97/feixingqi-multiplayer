@@ -1,4 +1,4 @@
-import { BoardView, COLOR_META } from "./render.js";
+import { BoardView, COLOR_META, colorTitle } from "./render.js";
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
 
 const socket = window.io();
@@ -157,25 +157,25 @@ function renderLobby(view) {
   $("lobby-seats").innerHTML = view.seats
     .map((s) => {
       if (s.empty) {
-        return `<div class="seat"><i class="swatch ${s.color}"></i><div>${s.nameZh}　空位（電腦）</div><span>未入座</span></div>`;
+        return `<div class="seat"><i class="swatch ${s.color}"></i><div>${colorTitle(s.color)}　空位（電腦）</div><span>未入座</span></div>`;
       }
       const tag = s.you ? "你" : s.type === "ai" ? "電腦" : s.connected ? "在線" : "離線";
       const ready = s.ready ? "已準備" : "未準備";
-      return `<div class="seat"><i class="swatch ${s.color}"></i><div>${s.nameZh}　${escapeHtml(s.name)}${s.isHost ? "（房主）" : ""}</div><span>${tag} · ${ready}</span></div>`;
+      return `<div class="seat"><i class="swatch ${s.color}"></i><div>${colorTitle(s.color)}　${escapeHtml(s.name)}${s.isHost ? "（房主）" : ""}</div><span>${tag} · ${ready}</span></div>`;
     })
     .join("");
 }
 
 function renderGame(view) {
   $("game-code").textContent = view.code;
-  const meta = COLOR_META[view.turnColor];
   const yours = view.yourTurn;
+  const turnName = colorTitle(view.turnColor);
   const turnText =
     view.phase === "ended"
       ? "對局結束"
       : yours
-        ? `輪到你（${meta.nameZh}）`
-        : `輪到${meta.nameZh}方`;
+        ? `輪到你（${turnName}）`
+        : `輪到${turnName}`;
   $("turn-banner").textContent = turnText;
   $("board-hud").textContent = turnText;
   $("btn-roll").disabled = !(yours && view.action === "roll") || moving || dicePlaying;
@@ -207,7 +207,7 @@ function renderGame(view) {
         .join("");
       return `<div class="player ${active}" style="color:${COLOR_META[s.color].hexDark}">
         <i class="swatch ${s.color}"></i>
-        <div>${COLOR_META[s.color].nameZh}　${escapeHtml(s.name)}<div class="hint">${kind}${s.you ? " · 你" : ""}</div></div>
+        <div>${colorTitle(s.color)}　${escapeHtml(s.name)}<div class="hint">${kind}${s.you ? " · 你" : ""}</div></div>
         <div class="dots">${dots}</div>
       </div>`;
     })
@@ -221,10 +221,10 @@ function showWinner(view) {
   $("winner-modal").hidden = false;
   const w = view.rankings?.[0];
   $("winner-title").textContent = w
-    ? `${COLOR_META[w.color].nameZh}方「${w.name}」獲勝`
+    ? `${colorTitle(w.color)}「${w.name}」獲勝`
     : "對局結束";
   $("winner-ranks").innerHTML = (view.rankings || [])
-    .map((r) => `<li>${r.rank}. ${COLOR_META[r.color].nameZh}　${escapeHtml(r.name)}</li>`)
+    .map((r) => `<li>${r.rank}. ${colorTitle(r.color)}　${escapeHtml(r.name)}</li>`)
     .join("");
 }
 
@@ -240,7 +240,8 @@ function renderPiecePicks(view) {
   box.innerHTML = ids
     .map((id) => {
       const plane = view.planes[view.yourColor][id];
-      const label = plane.loc === "hangar" ? `起飛 ${id + 1}` : `飛機 ${id + 1}`;
+      const animal = COLOR_META[view.yourColor].animalZh;
+      const label = plane.loc === "hangar" ? `出發 ${animal}${id + 1}` : `${animal} ${id + 1}`;
       return `<button class="btn" type="button" data-piece="${id}">${label}</button>`;
     })
     .join("");
@@ -377,8 +378,8 @@ function startRemoteRoll(color) {
   $("center-die").classList.add("rolling");
   $("center-die").classList.remove("fling", "dragging");
   $("dice").classList.add("rolling");
-  const who = COLOR_META[color]?.nameZh;
-  $("center-die-hint").textContent = who ? `${who}方擲骰中` : "擲骰中";
+  const who = color ? colorTitle(color) : "";
+  $("center-die-hint").textContent = who ? `${who}擲骰中` : "擲骰中";
   startShuffleFaces();
 }
 
@@ -388,7 +389,7 @@ function beginDiceResult(value, done, color) {
   $("center-die").classList.add("rolling");
   $("dice").classList.add("rolling");
   if (!diceTimer) startShuffleFaces();
-  const who = COLOR_META[color]?.nameZh;
+  const who = color ? colorTitle(color) : "";
   clearTimeout(diceHoldTimer);
   diceHoldTimer = setTimeout(() => {
     stopShuffleFaces();
@@ -397,7 +398,7 @@ function beginDiceResult(value, done, color) {
     $("center-die").style.setProperty("--drag-y", "0px");
     setDice(value);
     setCenterMode("result");
-    $("center-die-hint").textContent = who ? `${who}方 ${value}` : `擲出 ${value}`;
+    $("center-die-hint").textContent = who ? `${who} ${value}` : `擲出 ${value}`;
     diceHoldTimer = setTimeout(() => {
       dicePlaying = false;
       syncCenterDice();

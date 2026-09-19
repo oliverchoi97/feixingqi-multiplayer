@@ -9,6 +9,8 @@ export const COLOR_META = {
   yellow: {
     id: "yellow",
     nameZh: "黃",
+    animalZh: "貓",
+    pieceSrc: "/img/pieces/yellow-cat.png",
     hex: "#e6c200",
     hexDark: "#9a7b00",
     hexLight: "#ffe566",
@@ -21,6 +23,8 @@ export const COLOR_META = {
   green: {
     id: "green",
     nameZh: "綠",
+    animalZh: "龜",
+    pieceSrc: "/img/pieces/green-turtle.png",
     hex: "#1f8a3a",
     hexDark: "#0d5c22",
     hexLight: "#5dcc74",
@@ -33,6 +37,8 @@ export const COLOR_META = {
   red: {
     id: "red",
     nameZh: "紅",
+    animalZh: "兔",
+    pieceSrc: "/img/pieces/red-rabbit.png",
     hex: "#d42323",
     hexDark: "#8e1010",
     hexLight: "#ff6b6b",
@@ -45,6 +51,8 @@ export const COLOR_META = {
   blue: {
     id: "blue",
     nameZh: "藍",
+    animalZh: "狗",
+    pieceSrc: "/img/pieces/blue-dog.png",
     hex: "#1a4fd8",
     hexDark: "#0d2e86",
     hexLight: "#6b93ff",
@@ -55,6 +63,11 @@ export const COLOR_META = {
     opposite: "green",
   },
 };
+
+export function colorTitle(color) {
+  const m = COLOR_META[color];
+  return m ? `${m.nameZh}${m.animalZh}` : "";
+}
 
 /** Clockwise outer track, 52 squares. Index 0 = yellow turning arrow (left arm tip). */
 export const TRACK = [
