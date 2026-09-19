@@ -196,7 +196,7 @@ function startSolo(key) {
   if (!preset) return;
   saveNick();
   mode = "solo";
-  solo = { key, preset, board: emptyBoard(preset), t0: 0, rewind: null };
+  solo = { key, preset, board: emptyBoard(preset), t0: 0, rewind: null, started: false };
   $("btn-reset").hidden = false;
   $("btn-rewind").hidden = true;
   $("rewind-hint").hidden = true;
@@ -212,11 +212,13 @@ function startSolo(key) {
 function onReveal(i) {
   if (longPress?.flagged) return;
   if (mode === "solo") {
-    if (!solo.t0) solo.t0 = Date.now();
     const snap = snapshotBoard(solo.board);
     const result = revealCell(solo.board, i, Math.random);
     if (!result.ok) return;
+    if (!solo.t0) solo.t0 = Date.now();
+    solo.started = true;
     solo.rewind = snap;
+    setInMatch(true);
     paintSolo();
     if (result.hit) endSolo(false);
     else if (result.won) endSolo(true);
@@ -367,7 +369,26 @@ function joinTyped() {
 function show(name) {
   for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
   setChatOpen($("chat-bar"), name === "lobby" || name === "play");
-  setInMatch(name === "play");
+  syncInMatch(name);
+}
+
+function syncInMatch(screen = currentScreen()) {
+  if (screen !== "play") {
+    setInMatch(false);
+    return;
+  }
+  if (mode === "race") {
+    setInMatch(true);
+    return;
+  }
+  // Solo: board after picking a difficulty is not yet a match. First reveal starts it.
+  setInMatch(Boolean(mode === "solo" && solo?.started));
+}
+
+function currentScreen() {
+  if (!screens.play.hidden) return "play";
+  if (!screens.lobby.hidden) return "lobby";
+  return "hub";
 }
 
 function sendChat(text) {

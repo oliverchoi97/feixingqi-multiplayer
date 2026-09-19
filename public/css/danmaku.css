@@ -83,11 +83,11 @@
 
 .game-screen,
 .ms-play {
-  padding-bottom: calc(58px + env(safe-area-inset-bottom));
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
 }
 
 @media (max-width: 960px) {
   .game-screen {
-    padding-bottom: calc(58px + env(safe-area-inset-bottom));
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
   }
 }

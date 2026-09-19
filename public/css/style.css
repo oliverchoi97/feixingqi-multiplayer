@@ -287,9 +287,26 @@ input:focus {
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
   gap: 18px;
   align-items: stretch;
+  justify-items: stretch;
+  place-items: stretch;
   max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
+}
+
+.screen.game-screen {
   place-items: stretch;
+  align-items: stretch;
+  justify-items: stretch;
+}
+
+@media (min-width: 961px) {
+  .screen.game-screen {
+    height: 100dvh;
+    min-height: 100dvh;
+    box-sizing: border-box;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .panel {
@@ -302,6 +319,17 @@ input:focus {
   flex-direction: column;
   gap: 12px;
   min-height: 0;
+  height: 100%;
+  max-height: calc(100dvh - 24px - 64px - env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+}
+
+.panel-top,
+.player-list,
+.dice-block,
+#btn-rules,
+.session-strip {
+  flex: 0 0 auto;
 }
 
 .turn-banner {
@@ -316,6 +344,13 @@ input:focus {
 .player-list {
   display: grid;
   gap: 8px;
+}
+
+@media (min-width: 961px) {
+  .player-list {
+    max-height: min(240px, 28vh);
+    overflow: auto;
+  }
 }
 
 .player {
@@ -571,16 +606,34 @@ input:focus {
   100% { transform: rotate(-8deg) scale(1.05); }
 }
 
+.log-box {
+  flex: 1 1 12rem;
+  min-height: 8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
 .log {
   margin: 0;
-  padding: 0;
+  padding: 8px 10px;
   list-style: none;
-  overflow: auto;
-  max-height: 160px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
   font-size: 0.82rem;
+  line-height: 1.45;
   color: var(--muted);
   display: grid;
-  gap: 4px;
+  align-content: start;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .board-wrap {
@@ -680,7 +733,7 @@ input:focus {
 
   .game-screen {
     grid-template-columns: 1fr;
-    padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+    padding: 8px 8px calc(72px + env(safe-area-inset-bottom));
     gap: 10px;
     overscroll-behavior: none;
   }
@@ -690,6 +743,9 @@ input:focus {
     padding: 12px;
     border-radius: 18px;
     gap: 8px;
+    max-height: none;
+    overflow: visible;
+    height: auto;
   }
 
   .board-wrap {
@@ -704,8 +760,15 @@ input:focus {
     height: min(42vw, 136px);
   }
 
+  .log-box {
+    flex: 0 1 auto;
+    min-height: 9rem;
+    max-height: min(34vh, 240px);
+  }
+
   .log {
-    max-height: 72px;
+    min-height: 8.5rem;
+    max-height: min(34vh, 240px);
   }
 
   .panel-top {
