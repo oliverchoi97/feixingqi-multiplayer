@@ -407,6 +407,7 @@ function syncCenterDice() {
   if (dicePlaying) return;
   if (canRoll()) {
     setCenterMode("ready");
+    setDice(1);
     $("center-die-hint").textContent = "向上滑動擲骰";
     $("center-die-hit").setAttribute("aria-label", "向上滑動擲骰");
   } else {
