@@ -8,6 +8,7 @@ import {
   legalMoves,
   pickAiMove,
   rollDie,
+  sampleDieFace,
   simulateMove,
 } from "../shared/engine.js";
 
@@ -192,6 +193,48 @@ describe("AI", () => {
     const moves = legalMoves(state, "yellow", 3);
     assert.equal(moves.length, 0);
     assert.equal(pickAiMove(moves, "yellow"), null);
+  });
+});
+
+describe("dice", () => {
+  it("boosts sixes to about 25% while that color is still fully in hangar", () => {
+    const N = 20000;
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < N; i++) {
+      const state = createGameState(seats());
+      const rolled = rollDie(state);
+      counts[rolled.roll] += 1;
+    }
+    const p6 = counts[6] / N;
+    assert.ok(Math.abs(p6 - 0.25) < 0.02, `P(6)=${p6}`);
+    for (let face = 1; face <= 5; face++) {
+      const p = counts[face] / N;
+      assert.ok(Math.abs(p - 0.15) < 0.02, `P(${face})=${p}`);
+    }
+  });
+
+  it("uses a fair die after that color has taken off", () => {
+    const N = 20000;
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < N; i++) {
+      const state = createGameState(seats());
+      put(state, "yellow", 0, "track", COLOR_META.yellow.launch);
+      const rolled = rollDie(state);
+      counts[rolled.roll] += 1;
+    }
+    const p6 = counts[6] / N;
+    assert.ok(Math.abs(p6 - 1 / 6) < 0.02, `P(6)=${p6}`);
+    for (let face = 1; face <= 5; face++) {
+      const p = counts[face] / N;
+      assert.ok(Math.abs(p - 1 / 6) < 0.02, `P(${face})=${p}`);
+    }
+  });
+
+  it("keeps the boost only for colors that have not launched", () => {
+    assert.equal(sampleDieFace(() => 0.74, true), 5);
+    assert.equal(sampleDieFace(() => 0.75, true), 6);
+    assert.equal(sampleDieFace(() => 0.74, false), 5);
+    assert.equal(sampleDieFace(() => 5 / 6, false), 6);
   });
 });
 

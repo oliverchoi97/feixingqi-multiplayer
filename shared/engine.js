@@ -440,13 +440,27 @@ function nextTurnIndex(state) {
   return state.turnIndex;
 }
 
+/** True once this color has left the hangar (track, home stretch, or finished). */
+export function hasTakenOff(state, color) {
+  const planes = state.planes[color] || [];
+  return planes.some((p) => p.loc !== "hangar");
+}
+
+/** Fair d6, or takeoff boost: P(6)=1/4 and P(1..5)=3/20 each. */
+export function sampleDieFace(rng, boostSix) {
+  const u = rng();
+  if (!boostSix) return 1 + Math.min(5, Math.floor(u * 6));
+  if (u >= 0.75) return 6;
+  return 1 + Math.min(4, Math.floor((u / 0.75) * 5));
+}
+
 export function rollDie(state) {
   if (state.phase !== "playing" || state.action !== "roll") {
     return { ok: false, error: "現在不能擲骰" };
   }
-  const roll = 1 + Math.floor(state.rng() * 6);
-  state.lastRoll = roll;
   const color = currentColor(state);
+  const roll = sampleDieFace(state.rng, !hasTakenOff(state, color));
+  state.lastRoll = roll;
 
   if (roll === 6) {
     state.consecutiveSixes += 1;
