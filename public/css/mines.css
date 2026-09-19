@@ -70,8 +70,8 @@
 .ms-cell.flag {
   background-image: url("/img/flag.svg");
   background-repeat: no-repeat;
-  background-position: center 42%;
-  background-size: 68%;
+  background-position: center;
+  background-size: 82%;
 }
 
 .ms-cell.flag::after {
@@ -129,5 +129,8 @@
   }
   .ms-cell {
     font-size: 11px;
+  }
+  .ms-cell.flag {
+    background-size: 88%;
   }
 }
