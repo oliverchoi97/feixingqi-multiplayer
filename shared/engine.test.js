@@ -51,13 +51,40 @@ describe("takeoff", () => {
     assert.equal(sim.path[0].kind, "takeoff");
   });
 
-  it("captures an opponent sitting on the launch square", () => {
-    const state = stateWith((s) => {
-      put(s, "red", 0, "track", COLOR_META.yellow.launch);
-    });
-    const sim = simulateMove(state, "yellow", 1, 6);
-    assert.equal(sim.captured.length, 1);
-    assert.equal(sim.captured[0].color, "red");
+  it("does not capture the takeoff track cell; the next roll of 1 does", () => {
+    for (const color of COLORS) {
+      const victim = COLORS.find((c) => c !== color);
+      const launch = COLOR_META[color].launch;
+      const before = (launch + 51) % 52;
+      const state = stateWith((s) => {
+        put(s, victim, 0, "track", launch);
+        put(s, victim, 1, "track", before);
+      });
+      const takeoff = simulateMove(state, color, 0, 6);
+      assert.equal(takeoff.captured.length, 0, `${color} takeoff must not capture`);
+      applySim(state, takeoff);
+      assert.equal(state.planes[color][0].loc, "launch");
+      assert.equal(state.planes[victim][0].loc, "track");
+      assert.equal(state.planes[victim][0].index, launch);
+      assert.equal(state.planes[victim][1].loc, "track");
+
+      const step = simulateMove(state, color, 0, 1);
+      assert.ok(step, `${color} roll 1 from pad`);
+      assert.equal(step.end.loc, "track");
+      assert.equal(step.end.index, launch);
+      assert.ok(
+        step.captured.some((c) => c.color === victim && c.id === 0),
+        `${color} roll 1 captures the track cell`
+      );
+      assert.equal(
+        step.captured.some((c) => c.id === 1),
+        false,
+        `${color} must not capture the cell before launch`
+      );
+      applySim(state, step);
+      assert.equal(state.planes[victim][0].loc, "hangar");
+      assert.equal(state.planes[victim][1].loc, "track");
+    }
   });
 });
 

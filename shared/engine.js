@@ -246,8 +246,8 @@ export function simulateMove(state, color, pieceId, roll) {
     if (roll !== 6) return null;
     const launch = COLOR_META[color].launch;
     // Pad is not a track square. Occupying `launch` would skip that cell on the next roll.
+    // Capture only when a later roll actually lands on that track cell.
     path.push({ loc: "launch", index: launch, color, kind: "takeoff", slot: piece.slot });
-    captured.push(...captureAt(planes, "track", launch, color));
     piece.loc = "launch";
     piece.index = launch;
     return {
