@@ -245,9 +245,10 @@ export function simulateMove(state, color, pieceId, roll) {
   if (piece.loc === "hangar") {
     if (roll !== 6) return null;
     const launch = COLOR_META[color].launch;
-    path.push({ loc: "track", index: launch, color, kind: "takeoff", slot: piece.slot });
+    // Pad is not a track square. Occupying `launch` would skip that cell on the next roll.
+    path.push({ loc: "launch", index: launch, color, kind: "takeoff", slot: piece.slot });
     captured.push(...captureAt(planes, "track", launch, color));
-    piece.loc = "track";
+    piece.loc = "launch";
     piece.index = launch;
     return {
       color,
@@ -255,7 +256,7 @@ export function simulateMove(state, color, pieceId, roll) {
       roll,
       path,
       captured,
-      end: { loc: "track", index: launch },
+      end: { loc: "launch", index: launch },
       finished: false,
     };
   }
@@ -281,7 +282,8 @@ export function simulateMove(state, color, pieceId, roll) {
     };
   }
 
-  const local = globalToLocal(color, piece.index);
+  // From the takeoff pad, step 1 is the launch track square (local 0).
+  const local = piece.loc === "launch" ? -1 : globalToLocal(color, piece.index);
   const walked = walkOnPath(color, local, roll);
   path.push(...walked.path);
 
@@ -513,7 +515,9 @@ function punishThreeSixes(state, color) {
     const p = state.planes[color][id];
     if (sendPlaneHome(p)) return { color, id: p.id, slot: p.slot };
   }
-  const onBoard = state.planes[color].filter((p) => p.loc === "track" || p.loc === "home");
+  const onBoard = state.planes[color].filter(
+    (p) => p.loc === "track" || p.loc === "home" || p.loc === "launch"
+  );
   if (onBoard.length) {
     const p = onBoard[onBoard.length - 1];
     sendPlaneHome(p);
@@ -595,6 +599,7 @@ export function publicState(state, viewerPlayerId = null) {
 export function progressScore(plane, color) {
   if (plane.loc === "finished") return 1000;
   if (plane.loc === "hangar") return 0;
+  if (plane.loc === "launch") return 5;
   if (plane.loc === "home") return 500 + plane.index * 10;
   const local = globalToLocal(color, plane.index);
   return 10 + local * 2;

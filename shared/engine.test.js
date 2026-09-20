@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { COLOR_META, COLORS, globalToLocal, localToGlobal } from "../shared/board.js";
+import { COLOR_META, COLORS, globalToLocal, localToGlobal, trackColor } from "../shared/board.js";
 import {
   applySim,
   chooseMove,
@@ -43,10 +43,10 @@ describe("takeoff", () => {
     assert.equal(legalMoves(state, "yellow", 6).length, 4);
   });
 
-  it("places a plane on the coloured launch square", () => {
+  it("places a plane on the takeoff pad, not the first track cell", () => {
     const state = stateWith();
     const sim = simulateMove(state, "yellow", 0, 6);
-    assert.equal(sim.end.loc, "track");
+    assert.equal(sim.end.loc, "launch");
     assert.equal(sim.end.index, COLOR_META.yellow.launch);
     assert.equal(sim.path[0].kind, "takeoff");
   });
@@ -58,6 +58,47 @@ describe("takeoff", () => {
     const sim = simulateMove(state, "yellow", 1, 6);
     assert.equal(sim.captured.length, 1);
     assert.equal(sim.captured[0].color, "red");
+  });
+});
+
+describe("first step after takeoff", () => {
+  const firstCellColor = {
+    yellow: "blue",
+    green: "yellow",
+    red: "green",
+    blue: "red",
+  };
+
+  for (const color of COLORS) {
+    it(`${color}: roll 1 from the pad lands on the launch track cell with no jump`, () => {
+      const launch = COLOR_META[color].launch;
+      const state = stateWith();
+      const takeoff = simulateMove(state, color, 0, 6);
+      applySim(state, takeoff);
+      assert.equal(state.planes[color][0].loc, "launch");
+
+      const step = simulateMove(state, color, 0, 1);
+      assert.ok(step);
+      assert.equal(step.end.loc, "track");
+      // Pad is not a track index; first step occupies `launch` (yellow → 3 blue).
+      assert.equal(step.end.index, launch);
+      assert.equal(trackColor(step.end.index), firstCellColor[color], `${color} first cell`);
+      assert.equal(
+        step.path.some((p) => p.kind === "jump"),
+        false,
+        `${color} roll 1 must not same-color jump`
+      );
+      assert.equal(step.path.filter((p) => p.kind === "step").length, 1);
+    });
+  }
+
+  it("yellow roll 1 after takeoff is the blue cell, not a yellow jump", () => {
+    const state = stateWith();
+    applySim(state, simulateMove(state, "yellow", 0, 6));
+    const step = simulateMove(state, "yellow", 0, 1);
+    assert.equal(step.end.index, 3);
+    assert.equal(trackColor(3), "blue");
+    assert.notEqual(step.end.index, 8);
   });
 });
 

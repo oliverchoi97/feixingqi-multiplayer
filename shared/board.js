@@ -228,12 +228,13 @@ export function pieceScreenPos(plane, color) {
   if (plane.loc === "hangar" || plane.loc === "finished") {
     return HANGAR[color][plane.slot];
   }
+  if (plane.loc === "launch") {
+    return LAUNCH_PAD[color];
+  }
   if (plane.loc === "home") {
     return HOME[color][plane.index];
   }
   if (plane.loc === "track") {
-    const local = globalToLocal(color, plane.index);
-    if (local === 0) return LAUNCH_PAD[color];
     return TRACK[plane.index];
   }
   return [475, 475];
@@ -243,12 +244,13 @@ export function waypointScreenPos(wp) {
   if (wp.loc === "hangar" || wp.loc === "finished") {
     return HANGAR[wp.color][wp.slot];
   }
+  if (wp.loc === "launch" || wp.kind === "takeoff") {
+    return LAUNCH_PAD[wp.color];
+  }
   if (wp.loc === "home") {
     return HOME[wp.color][wp.index];
   }
   if (wp.loc === "track") {
-    const local = globalToLocal(wp.color, wp.index);
-    if (local === 0) return LAUNCH_PAD[wp.color];
     return TRACK[wp.index];
   }
   return [475, 475];
