@@ -30,7 +30,7 @@ npm run dev
 
 全站左下角有 **開啟音樂／靜音**（`public/js/bgm.js`），用 YouTube IFrame API 循環播放公開播放清單 [PLxj77DstROao_Y-Ypu-P0jAiNMwK2hHAr](https://www.youtube.com/playlist?list=PLxj77DstROao_Y-Ypu-P0jAiNMwK2hHAr)。不需登入。瀏覽器常會擋住有聲自動播放：第一次點「開啟音樂」（或之後任一操作）才出聲；選擇會記在 localStorage，換頁仍有效。播放清單須維持**公開或未列出**才能嵌入；若改成私人，按鈕會顯示無法播放。
 
-候機室與對局聊天可輸入 **`/song 歌手+歌`** 或 **`/song artist song`**（`/song` 後面空白可有可無，之後整段當搜尋字）。伺服器用 YouTube Data API v3 `search.list` 取第一筆可嵌入影片，用 Socket.IO 廣播 `song`（含 `videoId`）給同房所有人，共用同一個 IFrame 播放器插播；該曲結束後回到原本循環播放清單。彈幕不會出現原始 `/song …` 指令，改為「🎵 正在播放：…」。每位玩家與每個房間約 20 秒只能插一次；查詢會去掉 HTML，最長 56 字。首頁沒有聊天欄，此指令只在各遊戲頁有效。踩地雷單人沒有房間，改走 `GET /api/song?q=`，只在自己這台播放。
+候機室與對局聊天可輸入 **`/song 歌手+歌`** 或 **`/song artist song`**（`/song` 後面空白可有可無，之後整段當搜尋字）。伺服器用 YouTube Data API v3 `search.list` 取第一筆可嵌入影片，用 Socket.IO 廣播 `song`（含 `videoId`）給同房所有人，共用同一個 IFrame 播放器插播；該曲結束後從**插播前那一首**繼續循環播放清單（記住 playlist index／videoId，不從清單第一首重來）。YouTube IFrame 在 `loadVideoById` 之後往往接不上秒數，所以該首通常從開頭播。彈幕不會出現原始 `/song …` 指令，改為「🎵 正在播放：…」。每位玩家與每個房間約 20 秒只能插一次；查詢會去掉 HTML，最長 56 字。首頁沒有聊天欄，此指令只在各遊戲頁有效。踩地雷單人沒有房間，改走 `GET /api/song?q=`，只在自己這台播放。
 
 需要環境變數 **`YOUTUBE_API_KEY`**（或 `GOOGLE_API_KEY`），不要把金鑰寫進程式。未設定時聊天會提示「插歌未設定 API key」。本機可在啟動前 `export YOUTUBE_API_KEY=你的金鑰`。Google Cloud 專案須啟用 **YouTube Data API v3**。
 

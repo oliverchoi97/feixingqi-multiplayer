@@ -50,4 +50,15 @@ describe("site BGM", () => {
     }
     assert.equal(chatPages, 7);
   });
+
+  it("restores the interrupted playlist index after /song, not item 0", async () => {
+    const src = await readFile(path.join(publicDir, "js/bgm.js"), "utf8");
+    assert.match(src, /from "\.\/playlist-resume\.js"/);
+    assert.match(src, /rememberPlaylistPosition/);
+    assert.match(src, /playVideoAt\(want\)/);
+    assert.match(src, /interrupted index/);
+    const resume = src.slice(src.indexOf("function resumePlaylist"), src.indexOf("function finishPlaylistResume"));
+    assert.match(resume, /index,/);
+    assert.doesNotMatch(resume, /index:\s*0/);
+  });
 });

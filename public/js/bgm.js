@@ -1,3 +1,5 @@
+import { resolvePlaylistResumeIndex } from "./playlist-resume.js";
+
 const PLAYLIST_ID = "PLxj77DstROao_Y-Ypu-P0jAiNMwK2hHAr";
 const PREF_KEY = "giml-bgm";
 const API_SRC = "https://www.youtube.com/iframe_api";
@@ -11,6 +13,10 @@ let gestureArmed = false;
 let skipErrors = 0;
 let mode = "playlist";
 let playlistIndex = 0;
+let playlistVideoId = "";
+let playlistOffset = 0;
+let resumePending = false;
+let resumeAttempts = 0;
 let pendingSong = null;
 
 const root = mount();
@@ -174,16 +180,35 @@ function onReady(e) {
   paint();
 }
 
-function startPendingSong() {
-  if (!player || !pendingSong) return;
-  const { videoId, title } = pendingSong;
-  pendingSong = null;
+function rememberPlaylistPosition() {
+  if (!player || mode !== "playlist") return;
   try {
     const idx = player.getPlaylistIndex?.();
     if (Number.isInteger(idx) && idx >= 0) playlistIndex = idx;
   } catch {
-    /* not in a playlist */
+    /* player not in a playlist yet */
   }
+  try {
+    const id = player.getVideoData?.()?.video_id;
+    if (VIDEO_ID_RE.test(String(id || ""))) playlistVideoId = id;
+  } catch {
+    /* ignore */
+  }
+  try {
+    const t = Number(player.getCurrentTime?.());
+    if (Number.isFinite(t) && t >= 0) playlistOffset = t;
+  } catch {
+    /* ignore */
+  }
+}
+
+function startPendingSong() {
+  if (!player || !pendingSong) return;
+  const { videoId, title } = pendingSong;
+  pendingSong = null;
+  rememberPlaylistPosition();
+  resumePending = false;
+  resumeAttempts = 0;
   mode = "song";
   try {
     player.setLoop(false);
@@ -211,8 +236,20 @@ function resumePlaylist() {
   if (!player) return;
   mode = "playlist";
   showNowPlaying("");
+  resumePending = true;
+  resumeAttempts = 0;
+  const index = resolvePlaylistResumeIndex(playlistIndex, playlistVideoId, []);
+  // loadVideoById drops playlist context. Reload at the interrupted index (same
+  // item), never index 0 just because the insert ended. IFrame startSeconds is
+  // often ignored after a single-video load, so that item restarts from 0s;
+  // finishPlaylistResume() then playVideoAt() if loadPlaylist ignored `index`.
   try {
-    player.loadPlaylist({ listType: "playlist", list: PLAYLIST_ID, index: playlistIndex || 0 });
+    player.loadPlaylist({
+      listType: "playlist",
+      list: PLAYLIST_ID,
+      index,
+      startSeconds: playlistOffset > 1 ? Math.floor(playlistOffset) : 0,
+    });
     player.setLoop(true);
   } catch {
     try {
@@ -229,6 +266,35 @@ function resumePlaylist() {
       /* ignore */
     }
   }
+}
+
+function finishPlaylistResume() {
+  if (!resumePending || !player) return;
+  const list = typeof player.getPlaylist === "function" ? player.getPlaylist() || [] : [];
+  if (!list.length) return;
+  const want = resolvePlaylistResumeIndex(playlistIndex, playlistVideoId, list);
+  playlistIndex = want;
+  let have = -1;
+  try {
+    have = player.getPlaylistIndex();
+  } catch {
+    have = -1;
+  }
+  if (have !== want && typeof player.playVideoAt === "function") {
+    resumeAttempts += 1;
+    if (resumeAttempts > 4) {
+      resumePending = false;
+      return;
+    }
+    try {
+      player.playVideoAt(want);
+    } catch {
+      resumePending = false;
+    }
+    return;
+  }
+  resumePending = false;
+  resumeAttempts = 0;
 }
 
 function showNowPlaying(title) {
@@ -254,10 +320,18 @@ function onStateChange(e) {
   }
   if (e.data === YT.PlayerState.PLAYING) {
     skipErrors = 0;
+    if (mode === "playlist") {
+      finishPlaylistResume();
+      if (!resumePending) rememberPlaylistPosition();
+    }
     if (wantSound && player.isMuted()) armGestureUnmute();
     return;
   }
   if (e.data === YT.PlayerState.CUED) {
+    if (mode === "playlist" && resumePending) {
+      finishPlaylistResume();
+      if (resumeAttempts > 0) return;
+    }
     player.playVideo();
   }
 }
