@@ -26,6 +26,8 @@ npm run dev
 
 跑測試：`npm test`。兩開分頁即可同房。
 
+全站左下角有 **開啟音樂／靜音**（`public/js/bgm.js`），用 YouTube IFrame API 循環播放公開播放清單 [PLxj77DstROao_Y-Ypu-P0jAiNMwK2hHAr](https://www.youtube.com/playlist?list=PLxj77DstROao_Y-Ypu-P0jAiNMwK2hHAr)。不需登入。瀏覽器常會擋住有聲自動播放：第一次點「開啟音樂」（或之後任一操作）才出聲；選擇會記在 localStorage，換頁仍有效。播放清單須維持**公開或未列出**才能嵌入；若改成私人，按鈕會顯示無法播放。
+
 每個遊戲在**對局進行中**有 **結束遊戲**，候機室與對局都有 **回到主選單**（需確認）：
 
 - **結束遊戲**：只在開局後顯示。伺服器強制結束該房目前對局。飛行棋／棋類／猜猜畫畫回到該遊戲候機室；踩地雷回到模式選擇。房間裡其他人一齊離開對局畫面。單人踩地雷要等**揭開第一格**才出現（選難度後的空盤不算開局）。
@@ -80,5 +82,5 @@ npm run dev
 ```
 server/          Express + Socket.IO（飛行棋預設、踩地雷 /mines、棋類 /table、畫畫 /draw）
 shared/          各遊戲規則引擎與測試
-public/          入口與各遊戲介面
+public/          入口與各遊戲介面（含共用 BGM 模組）
 ```

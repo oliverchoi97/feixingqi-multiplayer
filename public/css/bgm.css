@@ -1,0 +1,73 @@
+.bgm-root {
+  position: fixed;
+  left: max(10px, env(safe-area-inset-left));
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 18;
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  pointer-events: none;
+}
+
+body:has(#chat-bar:not([hidden])) .bgm-root {
+  bottom: calc(62px + env(safe-area-inset-bottom));
+}
+
+.bgm-player {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  opacity: 0.04;
+  pointer-events: none;
+  left: 8px;
+  bottom: 4px;
+}
+
+.bgm-player iframe {
+  border: 0;
+  width: 48px;
+  height: 48px;
+}
+
+.bgm-toggle {
+  pointer-events: auto;
+  appearance: none;
+  border: 1px solid #d7c4a2;
+  border-radius: 999px;
+  padding: 8px 12px;
+  min-height: 40px;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  color: var(--ink);
+  background: rgba(255, 250, 240, 0.94);
+  box-shadow: 0 8px 18px rgba(42, 31, 20, 0.12);
+}
+
+.bgm-toggle[aria-pressed="true"] {
+  background: linear-gradient(180deg, #c43030, var(--lacquer-dark));
+  color: #fff8e8;
+  border-color: transparent;
+}
+
+.bgm-toggle:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.bgm-error {
+  pointer-events: none;
+  margin: 0;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 250, 240, 0.94);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  font-weight: 700;
+}
