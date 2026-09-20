@@ -13,6 +13,10 @@ body:has(#chat-bar:not([hidden])) .bgm-root {
   bottom: calc(62px + env(safe-area-inset-bottom));
 }
 
+body:has(.chat-log.open) .bgm-root {
+  bottom: calc(min(36vh, 260px) + 78px + env(safe-area-inset-bottom));
+}
+
 .bgm-player {
   position: absolute;
   width: 40px;

@@ -39,6 +39,7 @@ export function createRoom(host) {
       },
     ],
     game: null,
+    chatLog: [],
     timers: new Set(),
     busy: false,
   };
@@ -176,6 +177,7 @@ export function startGame(room) {
   });
 
   room.game = createGameState(seats);
+  room.chatLog = [];
   return { ok: true };
 }
 
@@ -335,6 +337,7 @@ export function endMatch(room) {
   clearTimers(room);
   room.busy = false;
   room.game = null;
+  room.chatLog = [];
   room.players = room.players.filter((p) => p.type === "human");
   for (const p of room.players) p.ready = false;
   return { ok: true };

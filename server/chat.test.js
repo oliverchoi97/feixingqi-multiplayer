@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { CHAT_MAX, sanitizeChat, takeChat } from "./chat.js";
+import { CHAT_MAX, sanitizeChat, takeChat, appendRoomChat, clearRoomChat, publicChatLog, CHAT_LOG_MAX } from "./chat.js";
 
 describe("chat", () => {
   it("trims, collapses space, and caps length", () => {
@@ -18,5 +18,18 @@ describe("chat", () => {
     assert.equal(b.ok, false);
     assert.equal(c.ok, true);
     assert.equal(c.text, "可以了");
+  });
+
+  it("keeps a capped in-memory match log and clears it", () => {
+    const room = { game: { phase: "playing" }, chatLog: [] };
+    assert.equal(appendRoomChat({ chatLog: [] }, { text: "大廳" }), null);
+    for (let i = 0; i < CHAT_LOG_MAX + 10; i++) {
+      appendRoomChat(room, { nickname: "甲", text: `第${i}`, playerId: "p", at: i });
+    }
+    assert.equal(room.chatLog.length, CHAT_LOG_MAX);
+    assert.equal(room.chatLog[0].text, "第10");
+    assert.equal(publicChatLog(room).at(-1).text, `第${CHAT_LOG_MAX + 9}`);
+    clearRoomChat(room);
+    assert.deepEqual(publicChatLog(room), []);
   });
 });

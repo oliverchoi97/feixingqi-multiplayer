@@ -19,6 +19,7 @@ export function createDrawRoom(host) {
       },
     ],
     game: null,
+    chatLog: [],
     timers: new Set(),
   };
 }
@@ -76,6 +77,7 @@ export function startDrawGame(room) {
     lastCorrect: null,
   };
   room.game.used.add(room.game.word);
+  room.chatLog = [];
   return { ok: true };
 }
 
@@ -214,6 +216,7 @@ export function scheduleDraw(room, fn, ms) {
 export function endDrawMatch(room) {
   clearDrawTimers(room);
   room.game = null;
+  room.chatLog = [];
   for (const p of room.players) p.ready = false;
   return { ok: true };
 }

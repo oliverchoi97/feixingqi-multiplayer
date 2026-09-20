@@ -81,6 +81,85 @@
   padding: 8px 14px;
 }
 
+.chat-log-toggle {
+  padding: 8px 10px !important;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+
+.chat-log {
+  position: absolute;
+  right: 10px;
+  bottom: calc(100% + 8px);
+  width: min(360px, calc(100vw - 96px));
+  max-height: min(36vh, 260px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: rgba(255, 250, 240, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(42, 31, 20, 0.16);
+  overflow: hidden;
+  z-index: 17;
+}
+
+.chat-log[hidden] {
+  display: none !important;
+}
+
+.chat-log-head {
+  padding: 8px 12px 4px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  color: var(--lacquer);
+}
+
+.chat-log-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 12px 10px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-log-empty {
+  margin: 0;
+  padding: 4px 12px 12px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.chat-log-row {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 6px 8px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  align-items: baseline;
+}
+
+.chat-log-row time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+}
+
+.chat-log-name {
+  font-weight: 800;
+  color: var(--lacquer);
+}
+
+.chat-log-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+
 .game-screen,
 .ms-play {
   padding-bottom: calc(72px + env(safe-area-inset-bottom));

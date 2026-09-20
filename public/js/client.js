@@ -68,7 +68,7 @@ $("btn-rules").onclick = () => $("modal").hidden = false;
 $("btn-close-rules").onclick = () => $("modal").hidden = true;
 $("btn-roll").onclick = () => requestRoll();
 bindCenterDie();
-bindChatBar($("chat-bar"), { onSend: sendChat });
+const chatLog = bindChatBar($("chat-bar"), { onSend: sendChat });
 bindSessionButtons({
   socket,
   lobbyPath: "/feixingqi",
@@ -78,6 +78,7 @@ bindSessionButtons({
     moving = false;
     abortDice();
     $("winner-modal").hidden = true;
+    chatLog.clear();
     if (lobby) {
       show("lobby");
       renderLobby(lobby);
@@ -103,6 +104,7 @@ socket.on("joined", (payload) => {
 socket.on("lobby", (view) => {
   lobby = view;
   readyOn = view.ready;
+  chatLog.clear();
   show("lobby");
   renderLobby(view);
 });
@@ -133,7 +135,9 @@ socket.on("rolling", ({ color } = {}) => {
 
 socket.on("chat", (msg) => {
   spawnDanmaku($("danmaku-layer"), { name: msg.nickname, text: msg.text }, escapeHtml);
+  chatLog.append(msg);
 });
+socket.on("chatLog", (list) => chatLog.replace(list));
 
 socket.on("moved", ({ sim }) => {
   beginMoving(sim);

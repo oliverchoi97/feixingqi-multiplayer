@@ -72,7 +72,7 @@ import {
   setDrawReady,
   startDrawGame,
 } from "./drawRooms.js";
-import { takeChat } from "./chat.js";
+import { takeChat, appendRoomChat, clearRoomChat, publicChatLog } from "./chat.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 43177);
@@ -191,12 +191,26 @@ function attachChat(socket, getRoomFn, nsp) {
       socket.emit("errorMsg", result.error);
       return;
     }
-    nsp.to(room.code).emit("chat", {
+    const msg = {
       nickname: p.nickname,
       text: result.text,
       playerId: p.playerId,
-    });
+      at: Date.now(),
+    };
+    appendRoomChat(room, msg);
+    nsp.to(room.code).emit("chat", msg);
   });
+}
+
+function sendChatHistory(socket, room) {
+  if (!socket || !room) return;
+  socket.emit("chatLog", publicChatLog(room));
+}
+
+function resetMatchChat(nsp, room) {
+  if (!nsp || !room) return;
+  clearRoomChat(room);
+  nsp.to(room.code).emit("chatLog", []);
 }
 
 io.on("connection", (socket) => {
@@ -245,6 +259,7 @@ io.on("connection", (socket) => {
       rejoin: result.rejoin,
     });
     broadcast(room, io);
+    sendChatHistory(socket, room);
     if (room.game) {
       socket.emit("state", gameView(room, id));
       maybeContinueAi(room, io);
@@ -353,6 +368,7 @@ io.on("connection", (socket) => {
     const room = getRoom(socket.data.roomCode);
     if (!room) return;
     endMatch(room);
+    resetMatchChat(io, room);
     emitEnded(io, room, { requesterId: socket.data.playerId, toMenu: false, destOthers: "lobby" });
     broadcast(room, io);
   });
@@ -364,6 +380,7 @@ io.on("connection", (socket) => {
       return;
     }
     endMatch(room);
+    resetMatchChat(io, room);
     emitEnded(io, room, { requesterId: socket.data.playerId, toMenu: true, destOthers: "lobby" });
     removePlayer(room, socket.data.playerId);
     socket.leave(room.code);
@@ -426,6 +443,7 @@ minesNsp.on("connection", (socket) => {
     socket.join(room.code);
     socket.emit("joined", { playerId: id, code: room.code, rejoin: result.rejoin });
     broadcastMines(room, minesNsp);
+    sendChatHistory(socket, room);
     if (room.game) {
       const view = minesGameView(room, id);
       if (view) socket.emit("state", view);
@@ -493,6 +511,7 @@ function abortMines(socket, toMenu) {
     return;
   }
   endMinesMatch(room);
+  resetMatchChat(minesNsp, room);
   emitEnded(minesNsp, room, {
     requesterId: socket.data.playerId,
     toMenu,
@@ -547,6 +566,7 @@ tableNsp.on("connection", (socket) => {
     socket.join(room.code);
     socket.emit("joined", { playerId: id, code: room.code, kind: room.kind, rejoin: result.rejoin });
     broadcastTable(room, tableNsp);
+    sendChatHistory(socket, room);
     if (room.game) socket.emit("state", tableGameView(room, id));
   });
 
@@ -585,6 +605,7 @@ tableNsp.on("connection", (socket) => {
     const room = getTableRoom(socket.data.roomCode);
     if (!room) return;
     endTableMatch(room);
+    resetMatchChat(tableNsp, room);
     emitEnded(tableNsp, room, {
       requesterId: socket.data.playerId,
       toMenu: false,
@@ -600,6 +621,7 @@ tableNsp.on("connection", (socket) => {
       return;
     }
     endTableMatch(room);
+    resetMatchChat(tableNsp, room);
     emitEnded(tableNsp, room, {
       requesterId: socket.data.playerId,
       toMenu: true,
@@ -660,6 +682,7 @@ drawNsp.on("connection", (socket) => {
     socket.join(room.code);
     socket.emit("joined", { playerId: id, code: room.code, rejoin: result.rejoin });
     broadcastDraw(room, drawNsp);
+    sendChatHistory(socket, room);
     if (room.game) socket.emit("state", drawGameView(room, id));
   });
 
@@ -708,11 +731,14 @@ drawNsp.on("connection", (socket) => {
       return;
     }
     if (!result.correct) {
-      drawNsp.to(room.code).emit("chat", {
+      const msg = {
         nickname: p?.nickname ?? "玩家",
         text: result.text,
         playerId: socket.data.playerId,
-      });
+        at: Date.now(),
+      };
+      appendRoomChat(room, msg);
+      drawNsp.to(room.code).emit("chat", msg);
       return;
     }
     clearDrawTimers(room);
@@ -728,6 +754,7 @@ drawNsp.on("connection", (socket) => {
     const room = getDrawRoom(socket.data.roomCode);
     if (!room) return;
     endDrawMatch(room);
+    resetMatchChat(drawNsp, room);
     emitEnded(drawNsp, room, {
       requesterId: socket.data.playerId,
       toMenu: false,
@@ -743,6 +770,7 @@ drawNsp.on("connection", (socket) => {
       return;
     }
     endDrawMatch(room);
+    resetMatchChat(drawNsp, room);
     emitEnded(drawNsp, room, {
       requesterId: socket.data.playerId,
       toMenu: true,
@@ -772,6 +800,7 @@ function begin(room) {
   }
   broadcast(room, io);
   io.to(room.code).emit("started");
+  io.to(room.code).emit("chatLog", publicChatLog(room));
   if (isAiTurn(room)) aiAct(room, io);
 }
 
@@ -782,6 +811,7 @@ function beginMines(room) {
     return;
   }
   minesNsp.to(room.code).emit("started");
+  minesNsp.to(room.code).emit("chatLog", publicChatLog(room));
   broadcastMines(room, minesNsp);
 }
 
@@ -792,6 +822,7 @@ function beginTable(room) {
     return;
   }
   tableNsp.to(room.code).emit("started");
+  tableNsp.to(room.code).emit("chatLog", publicChatLog(room));
   broadcastTable(room, tableNsp);
   if (isTableAiTurn(room)) maybeTableAi(room, tableNsp);
 }
@@ -803,6 +834,7 @@ function beginDraw(room) {
     return;
   }
   broadcastDraw(room, drawNsp);
+  drawNsp.to(room.code).emit("chatLog", publicChatLog(room));
   armDrawTimer(room);
 }
 

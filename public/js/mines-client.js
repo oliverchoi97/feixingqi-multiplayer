@@ -69,6 +69,7 @@ $("btn-back").onclick = (e) => {
   if (mode === "solo") {
     e.preventDefault();
     stopTimer();
+    chatLog.clear();
     show("hub");
     mode = "hub";
   }
@@ -88,7 +89,7 @@ document.querySelectorAll(".ms-tool").forEach((btn) => {
 });
 setTool("dig");
 
-bindChatBar($("chat-bar"), { onSend: sendChat });
+const chatLog = bindChatBar($("chat-bar"), { onSend: sendChat });
 bindSessionButtons({
   socket,
   lobbyPath: "/minesweeper",
@@ -99,6 +100,7 @@ bindSessionButtons({
     solo = null;
     race = null;
     $("winner-modal").hidden = true;
+    chatLog.clear();
     history.replaceState({}, "", "/minesweeper");
     show("hub");
   },
@@ -188,7 +190,9 @@ socket.on("errorMsg", (msg) => toast(msg));
 
 socket.on("chat", (msg) => {
   spawnDanmaku($("danmaku-layer"), { name: msg.nickname, text: msg.text }, escapeHtml);
+  chatLog.append(msg);
 });
+socket.on("chatLog", (list) => chatLog.replace(list));
 
 if (me.playerId && params.get("room")) {
   saveNick();
@@ -214,6 +218,7 @@ function startSolo(key) {
   buildGrid(preset.cols, preset.rows);
   paintSolo();
   setTool("dig");
+  chatLog.clear();
   show("play");
   startTimer(() => (solo.t0 ? Math.floor((Date.now() - solo.t0) / 1000) : 0));
 }
@@ -426,6 +431,7 @@ function sendChat(text) {
   lastChatAt = now;
   if (mode === "solo") {
     spawnDanmaku($("danmaku-layer"), { name: me.nickname || "玩家", text }, escapeHtml);
+    chatLog.append({ nickname: me.nickname || "玩家", text, at: Date.now() });
     return true;
   }
   socket.emit("chat", text);

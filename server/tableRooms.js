@@ -57,6 +57,7 @@ export function createTableRoom(kind, host) {
       },
     ],
     game: null,
+    chatLog: [],
     timers: new Set(),
     busy: false,
   };
@@ -131,6 +132,7 @@ export function startTableGame(room) {
     };
   });
   room.game = spec.engine.createGame(seats);
+  room.chatLog = [];
   return { ok: true };
 }
 
@@ -205,6 +207,7 @@ export function endTableMatch(room) {
   clearTableTimers(room);
   room.busy = false;
   room.game = null;
+  room.chatLog = [];
   room.players = room.players.filter((p) => p.type === "human");
   for (const p of room.players) {
     p.ready = false;

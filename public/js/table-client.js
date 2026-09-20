@@ -84,7 +84,7 @@ if (KIND === "guosanguan") {
   });
 }
 
-bindChatBar($("chat-bar"), { onSend: sendChat });
+const chatLog = bindChatBar($("chat-bar"), { onSend: sendChat });
 bindSessionButtons({
   socket,
   lobbyPath: PATH,
@@ -92,6 +92,7 @@ bindSessionButtons({
   onGoLobby: () => {
     game = null;
     $("winner-modal").hidden = true;
+    chatLog.clear();
     if (lobby) {
       show("lobby");
       renderLobby(lobby);
@@ -111,6 +112,7 @@ socket.on("lobby", (view) => {
   game = null;
   readyOn = view.ready;
   $("winner-modal").hidden = true;
+  chatLog.clear();
   show("lobby");
   renderLobby(view);
 });
@@ -131,7 +133,9 @@ socket.on("state", (view) => {
 socket.on("errorMsg", (msg) => toast(msg));
 socket.on("chat", (msg) => {
   spawnDanmaku($("danmaku-layer"), { name: msg.nickname, text: msg.text }, escapeHtml);
+  chatLog.append(msg);
 });
+socket.on("chatLog", (list) => chatLog.replace(list));
 
 if (me.playerId && params.get("room")) {
   saveNick();

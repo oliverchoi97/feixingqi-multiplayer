@@ -32,6 +32,7 @@ export function createMinesRoom(host) {
       },
     ],
     game: null,
+    chatLog: [],
   };
 }
 
@@ -84,6 +85,7 @@ export function startMinesGame(room) {
     layout,
     boards,
   };
+  room.chatLog = [];
   return { ok: true };
 }
 
@@ -198,6 +200,7 @@ function finish(room, winnerId, reason) {
 
 export function endMinesMatch(room) {
   room.game = null;
+  room.chatLog = [];
   for (const p of room.players) p.ready = false;
   return { ok: true };
 }
