@@ -29,6 +29,7 @@ let timerId = 0;
 let longPress = null;
 let cells = [];
 let lastChatAt = 0;
+let tool = "dig";
 
 const params = new URLSearchParams(location.search);
 if (params.get("room")) $("join-code").value = params.get("room").toUpperCase();
@@ -82,6 +83,11 @@ $("btn-again").onclick = () => {
 };
 $("btn-rewind").onclick = rewindSolo;
 
+document.querySelectorAll(".ms-tool").forEach((btn) => {
+  btn.onclick = () => setTool(btn.dataset.tool);
+});
+setTool("dig");
+
 bindChatBar($("chat-bar"), { onSend: sendChat });
 bindSessionButtons({
   socket,
@@ -104,7 +110,8 @@ $("ms-board").addEventListener("click", (e) => {
   longPress = null;
   if (i == null || skip) return;
   e.preventDefault();
-  onReveal(i);
+  if (tool === "flag") onFlag(i);
+  else onReveal(i);
 });
 $("ms-board").addEventListener("contextmenu", (e) => {
   const i = cellIndex(e.target);
@@ -163,6 +170,7 @@ socket.on("lobby", (view) => {
 socket.on("started", () => {
   mode = "race";
   $("btn-reset").hidden = true;
+  setTool("dig");
   show("play");
 });
 
@@ -205,6 +213,7 @@ function startSolo(key) {
   $("ms-level").textContent = preset.nameZh;
   buildGrid(preset.cols, preset.rows);
   paintSolo();
+  setTool("dig");
   show("play");
   startTimer(() => (solo.t0 ? Math.floor((Date.now() - solo.t0) / 1000) : 0));
 }
@@ -357,6 +366,22 @@ function cellIndex(target) {
   if (!el) return null;
   const i = Number(el.dataset.i);
   return Number.isInteger(i) ? i : null;
+}
+
+function setTool(next) {
+  tool = next === "flag" ? "flag" : "dig";
+  document.querySelectorAll(".ms-tool").forEach((btn) => {
+    const on = btn.dataset.tool === tool;
+    btn.classList.toggle("selected", on);
+    btn.setAttribute("aria-checked", on ? "true" : "false");
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  $("ms-board")?.classList.toggle("flag-mode", tool === "flag");
+  const hint = $("ms-tool-hint");
+  if (hint) {
+    hint.textContent =
+      tool === "flag" ? "點格子插旗或拔旗。長按／右鍵同樣可以。" : "點格子揭開。可改插旗，或長按／右鍵插旗。";
+  }
 }
 
 function joinTyped() {

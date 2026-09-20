@@ -17,6 +17,48 @@
   padding: 6px 12px;
 }
 
+.ms-tools {
+  display: flex;
+  width: min(100%, 360px);
+  margin: 0 auto 8px;
+  padding: 4px;
+  gap: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--line);
+}
+
+.ms-tool {
+  flex: 1;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font: inherit;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  color: var(--ink);
+  background: transparent;
+  touch-action: manipulation;
+}
+
+.ms-tool.selected {
+  background: linear-gradient(180deg, #c43030, var(--lacquer-dark));
+  color: #fff8e8;
+  box-shadow: 0 6px 14px rgba(156, 28, 28, 0.28);
+}
+
+.ms-tool-hint {
+  width: min(100%, 960px);
+  margin: 0 auto 10px;
+  text-align: center;
+}
+
+.ms-board.flag-mode {
+  cursor: cell;
+}
+
 .ms-board-scroll {
   width: max-content;
   max-width: 100%;
@@ -26,7 +68,7 @@
   border-radius: 16px;
   box-shadow: var(--shadow);
   background: #c0c0c0;
-  max-height: calc(100dvh - 210px);
+  max-height: calc(100dvh - 270px);
 }
 
 .ms-board {

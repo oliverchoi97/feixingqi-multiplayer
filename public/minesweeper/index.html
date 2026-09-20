@@ -92,6 +92,11 @@
         <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
       </div>
       <div id="ms-race" class="ms-race" hidden></div>
+      <div class="ms-tools" role="radiogroup" aria-label="點選模式">
+        <button type="button" class="ms-tool selected" id="tool-dig" data-tool="dig" role="radio" aria-checked="true" aria-pressed="true">踩</button>
+        <button type="button" class="ms-tool" id="tool-flag" data-tool="flag" role="radio" aria-checked="false" aria-pressed="false">插旗</button>
+      </div>
+      <p id="ms-tool-hint" class="hint ms-tool-hint">點格子揭開。可改插旗，或長按／右鍵插旗。</p>
       <div class="ms-board-scroll">
         <div id="ms-board" class="ms-board"></div>
       </div>
