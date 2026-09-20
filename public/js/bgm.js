@@ -197,26 +197,40 @@ function fail(message) {
 }
 
 function tryUnmute() {
-  if (!player || failed) return false;
+  if (failed) return false;
+  wantSound = true;
+  savePref(true);
+  if (!player) {
+    soundOn = false;
+    paint();
+    return false;
+  }
+  soundOn = true;
+  paint();
   try {
     player.unMute();
     player.setVolume(44);
     player.playVideo();
-    soundOn = !player.isMuted();
   } catch {
     soundOn = false;
+    paint();
+    return false;
   }
-  if (soundOn) {
-    wantSound = true;
-    savePref(true);
-  }
-  paint();
-  return soundOn;
+  setTimeout(() => {
+    if (!player || failed || !wantSound) return;
+    if (player.isMuted()) {
+      soundOn = false;
+      paint();
+      armGestureUnmute();
+    }
+  }, 500);
+  return true;
 }
 
 function muteNow() {
   wantSound = false;
   soundOn = false;
+  gestureArmed = false;
   savePref(false);
   try {
     player?.mute();
