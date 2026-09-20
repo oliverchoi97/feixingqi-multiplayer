@@ -26,9 +26,10 @@ export function appendRoomChat(room, msg, { matchOnly = true } = {}) {
   if (!Array.isArray(room.chatLog)) room.chatLog = [];
   const entry = {
     nickname: String(msg?.nickname || "玩家").slice(0, 12),
-    text: sanitizeChat(msg?.text),
+    text: String(msg?.text || "").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim().slice(0, msg?.system ? 80 : CHAT_MAX),
     playerId: msg?.playerId ? String(msg.playerId).slice(0, 32) : "",
     at: Number(msg?.at) || Date.now(),
+    system: Boolean(msg?.system),
   };
   if (!entry.text) return null;
   room.chatLog.push(entry);
@@ -49,5 +50,6 @@ export function publicChatLog(room) {
     text: m.text,
     playerId: m.playerId,
     at: m.at,
+    system: Boolean(m.system),
   }));
 }

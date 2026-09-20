@@ -1,6 +1,7 @@
 const PLAYLIST_ID = "PLxj77DstROao_Y-Ypu-P0jAiNMwK2hHAr";
 const PREF_KEY = "giml-bgm";
 const API_SRC = "https://www.youtube.com/iframe_api";
+const VIDEO_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
 let player = null;
 let wantSound = loadPref();
@@ -8,6 +9,9 @@ let soundOn = false;
 let failed = false;
 let gestureArmed = false;
 let skipErrors = 0;
+let mode = "playlist";
+let playlistIndex = 0;
+let pendingSong = null;
 
 const root = mount();
 const toggle = root.querySelector("#bgm-toggle");
@@ -18,6 +22,32 @@ paint();
 loadYouTubeApi()
   .then(createPlayer)
   .catch(() => fail("音樂無法載入。"));
+
+export function playSong(payload) {
+  const videoId = String(payload?.videoId || "");
+  if (!VIDEO_ID_RE.test(videoId)) return;
+  pendingSong = { videoId, title: String(payload?.title || "").slice(0, 80) };
+  if (player) startPendingSong();
+}
+
+export function bindSongSocket(socket) {
+  if (!socket?.on) return;
+  socket.on("song", playSong);
+}
+
+export async function searchAndPlaySong(query) {
+  const q = String(query || "").trim();
+  const res = await fetch(`/api/song?q=${encodeURIComponent(q)}`);
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    return { ok: false, error: "插歌失敗" };
+  }
+  if (!data?.ok) return { ok: false, error: data?.error || "插歌失敗" };
+  playSong(data);
+  return data;
+}
 
 function loadPref() {
   try {
@@ -140,7 +170,79 @@ function onReady(e) {
     tryUnmute();
     armGestureUnmute();
   }
+  startPendingSong();
   paint();
+}
+
+function startPendingSong() {
+  if (!player || !pendingSong) return;
+  const { videoId, title } = pendingSong;
+  pendingSong = null;
+  try {
+    const idx = player.getPlaylistIndex?.();
+    if (Number.isInteger(idx) && idx >= 0) playlistIndex = idx;
+  } catch {
+    /* not in a playlist */
+  }
+  mode = "song";
+  try {
+    player.setLoop(false);
+  } catch {
+    /* ignore */
+  }
+  try {
+    player.loadVideoById(videoId);
+  } catch {
+    resumePlaylist();
+    return;
+  }
+  showNowPlaying(title);
+  if (wantSound) tryUnmute();
+  else {
+    try {
+      player.mute();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function resumePlaylist() {
+  if (!player) return;
+  mode = "playlist";
+  showNowPlaying("");
+  try {
+    player.loadPlaylist({ listType: "playlist", list: PLAYLIST_ID, index: playlistIndex || 0 });
+    player.setLoop(true);
+  } catch {
+    try {
+      player.playVideo();
+    } catch {
+      /* ignore */
+    }
+  }
+  if (wantSound) tryUnmute();
+  else {
+    try {
+      player.mute();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function showNowPlaying(title) {
+  const text = String(title || "").trim();
+  errEl.classList.toggle("bgm-now", Boolean(text));
+  if (!text) {
+    if (!failed) {
+      errEl.hidden = true;
+      errEl.textContent = "";
+    }
+    return;
+  }
+  errEl.hidden = false;
+  errEl.textContent = `▶ ${text}`;
 }
 
 function onStateChange(e) {
@@ -162,6 +264,10 @@ function onStateChange(e) {
 
 function loopPlaylist() {
   if (!player) return;
+  if (mode === "song") {
+    resumePlaylist();
+    return;
+  }
   const list = typeof player.getPlaylist === "function" ? player.getPlaylist() || [] : [];
   const idx = typeof player.getPlaylistIndex === "function" ? player.getPlaylistIndex() : 0;
   try {
@@ -175,6 +281,10 @@ function loopPlaylist() {
 }
 
 function onError() {
+  if (mode === "song") {
+    resumePlaylist();
+    return;
+  }
   skipErrors += 1;
   if (skipErrors > 12) {
     fail("音樂無法播放。播放清單可能已設為私人，或影片禁止嵌入。");
@@ -275,7 +385,7 @@ function paint() {
     toggle.textContent = "靜音";
     toggle.setAttribute("aria-pressed", "true");
     toggle.setAttribute("aria-label", "關閉背景音樂");
-    errEl.hidden = true;
+    if (!errEl.classList.contains("bgm-now")) errEl.hidden = true;
     return;
   }
   toggle.textContent = "開啟音樂";

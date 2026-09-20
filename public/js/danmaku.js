@@ -1,3 +1,5 @@
+import { SONG_INPUT_MAX } from "/shared/song.js";
+
 export const CHAT_MAX = 48;
 
 function escapeHtml(s) {
@@ -15,10 +17,11 @@ export function bindChatBar(form, { onSend, escapeHtml: _escapeHtml } = {}) {
   const input = form.querySelector("input");
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const text = String(input.value || "")
+    const trimmed = String(input.value || "")
       .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, CHAT_MAX);
+      .trim();
+    const isSong = /^\/song/i.test(trimmed);
+    const text = trimmed.slice(0, isSong ? SONG_INPUT_MAX : CHAT_MAX);
     if (!text) return;
     if (onSend(text) === false) return;
     input.value = "";
@@ -90,7 +93,7 @@ function mountChatLog(form) {
     list.replaceChildren();
     for (const m of messages) {
       const row = document.createElement("p");
-      row.className = "chat-log-row";
+      row.className = m.system ? "chat-log-row chat-log-system" : "chat-log-row";
       const time = document.createElement("time");
       time.dateTime = new Date(m.at).toISOString();
       time.textContent = formatTime(m.at);
@@ -128,9 +131,10 @@ function mountChatLog(form) {
       if (!text) return;
       messages.push({
         nickname: String(msg.nickname || "玩家").slice(0, 12),
-        text: text.slice(0, CHAT_MAX),
+        text: text.slice(0, msg.system ? 80 : CHAT_MAX),
         playerId: msg.playerId || "",
         at: Number(msg.at) || Date.now(),
+        system: Boolean(msg.system),
       });
       if (messages.length > 80) messages.splice(0, messages.length - 80);
       render();
@@ -142,9 +146,10 @@ function mountChatLog(form) {
         if (!text) continue;
         messages.push({
           nickname: String(m.nickname || "玩家").slice(0, 12),
-          text: text.slice(0, CHAT_MAX),
+          text: text.slice(0, m.system ? 80 : CHAT_MAX),
           playerId: m.playerId || "",
           at: Number(m.at) || Date.now(),
+          system: Boolean(m.system),
         });
       }
       render();

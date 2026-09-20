@@ -160,6 +160,11 @@
   color: var(--ink);
 }
 
+.chat-log-system .chat-log-text {
+  color: var(--lacquer);
+  font-weight: 700;
+}
+
 .game-screen,
 .ms-play {
   padding-bottom: calc(72px + env(safe-area-inset-bottom));

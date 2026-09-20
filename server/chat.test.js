@@ -32,4 +32,15 @@ describe("chat", () => {
     clearRoomChat(room);
     assert.deepEqual(publicChatLog(room), []);
   });
+
+  it("keeps system notices longer than normal chat", () => {
+    const room = { game: { phase: "playing" }, chatLog: [] };
+    const text = `🎵 正在播放：${"晴天 ".repeat(20).trim()}`;
+    appendRoomChat(room, { nickname: "甲", text, system: true, at: 1 });
+    const logged = publicChatLog(room)[0];
+    assert.equal(logged.system, true);
+    assert.ok(logged.text.length > CHAT_MAX);
+    assert.ok(logged.text.startsWith("🎵 正在播放："));
+    assert.ok(logged.text.length <= 80);
+  });
 });

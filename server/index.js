@@ -73,6 +73,7 @@ import {
   startDrawGame,
 } from "./drawRooms.js";
 import { takeChat, appendRoomChat, clearRoomChat, publicChatLog } from "./chat.js";
+import { parseSongCommand, takeSong, searchYouTubeVideo, SONG_COOLDOWN_MS } from "./song.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 43177);
@@ -83,6 +84,7 @@ const tableRooms = new Map();
 const drawRooms = new Map();
 
 const app = express();
+app.set("trust proxy", 1);
 app.get("/healthz", (_req, res) => {
   res.status(200).json({ ok: true });
 });
@@ -114,6 +116,24 @@ for (const [route, parts] of Object.entries(pages)) {
 
 app.use(express.static(publicDir));
 app.use("/shared", express.static(path.join(__dirname, "../shared")));
+
+const songIpHits = new Map();
+app.get("/api/song", async (req, res) => {
+  const parsed = parseSongCommand(`/song ${req.query.q || ""}`);
+  if (!parsed.isSong || !parsed.ok) {
+    return res.status(400).json({ ok: false, error: parsed.error || "請輸入歌名，例如 /song 周杰倫 晴天" });
+  }
+  const ip = String(req.ip || "anon");
+  const now = Date.now();
+  const prev = songIpHits.get(ip) || 0;
+  if (now - prev < SONG_COOLDOWN_MS) {
+    return res.status(429).json({ ok: false, error: "插歌太頻繁，請稍等一下" });
+  }
+  songIpHits.set(ip, now);
+  const found = await searchYouTubeVideo(parsed.query);
+  const status = found.ok ? 200 : found.error?.includes("API key") ? 503 : 404;
+  res.status(status).json(found);
+});
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
@@ -181,11 +201,16 @@ function emitEnded(nsp, room, { requesterId, toMenu, destOthers }) {
 }
 
 function attachChat(socket, getRoomFn, nsp) {
-  socket.on("chat", (raw) => {
+  socket.on("chat", async (raw) => {
     const room = getRoomFn();
     if (!room) return;
     const p = room.players.find((x) => x.playerId === socket.data.playerId);
     if (!p) return;
+    const song = parseSongCommand(raw);
+    if (song.isSong) {
+      await handleSongRequest(socket, room, nsp, p, raw);
+      return;
+    }
     const result = takeChat(socket.data, raw);
     if (!result.ok) {
       socket.emit("errorMsg", result.error);
@@ -200,6 +225,43 @@ function attachChat(socket, getRoomFn, nsp) {
     appendRoomChat(room, msg);
     nsp.to(room.code).emit("chat", msg);
   });
+}
+
+async function handleSongRequest(socket, room, nsp, player, raw) {
+  const parsed = takeSong([socket.data, room], raw);
+  if (!parsed.ok) {
+    socket.emit("errorMsg", parsed.error);
+    return;
+  }
+  let found;
+  try {
+    found = await searchYouTubeVideo(parsed.query);
+  } catch {
+    socket.emit("errorMsg", "插歌搜尋失敗，請稍後再試");
+    return;
+  }
+  if (!found.ok) {
+    socket.emit("errorMsg", found.error);
+    return;
+  }
+  const at = Date.now();
+  nsp.to(room.code).emit("song", {
+    videoId: found.videoId,
+    title: found.title,
+    query: parsed.query,
+    nickname: player.nickname,
+    playerId: player.playerId,
+    at,
+  });
+  const notice = {
+    nickname: player.nickname,
+    text: `🎵 正在播放：${found.title}`,
+    playerId: player.playerId,
+    at,
+    system: true,
+  };
+  appendRoomChat(room, notice);
+  nsp.to(room.code).emit("chat", notice);
 }
 
 function sendChatHistory(socket, room) {

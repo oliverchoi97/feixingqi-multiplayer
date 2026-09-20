@@ -10,6 +10,8 @@ import {
 } from "/shared/mines.js";
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
 import { bindSessionButtons, setInMatch } from "./session-nav.js";
+import { bindSongSocket, searchAndPlaySong } from "./bgm.js";
+import { parseSongCommand } from "/shared/song.js";
 
 const socket = window.io("/mines");
 const $ = (id) => document.getElementById(id);
@@ -90,6 +92,7 @@ document.querySelectorAll(".ms-tool").forEach((btn) => {
 setTool("dig");
 
 const chatLog = bindChatBar($("chat-bar"), { onSend: sendChat });
+bindSongSocket(socket);
 bindSessionButtons({
   socket,
   lobbyPath: "/minesweeper",
@@ -423,6 +426,14 @@ function currentScreen() {
 
 function sendChat(text) {
   saveNick();
+  if (/^\/song/i.test(text)) {
+    if (mode === "solo") {
+      requestSoloSong(text);
+      return true;
+    }
+    socket.emit("chat", text);
+    return true;
+  }
   const now = Date.now();
   if (now - lastChatAt < 800) {
     toast("說慢一點");
@@ -435,6 +446,27 @@ function sendChat(text) {
     return true;
   }
   socket.emit("chat", text);
+}
+
+async function requestSoloSong(text) {
+  const parsed = parseSongCommand(text);
+  if (!parsed.ok) {
+    toast(parsed.error || "請輸入歌名，例如 /song 周杰倫 晴天");
+    return;
+  }
+  const found = await searchAndPlaySong(parsed.query);
+  if (!found.ok) {
+    toast(found.error || "插歌失敗");
+    return;
+  }
+  const notice = {
+    nickname: me.nickname || "玩家",
+    text: `🎵 正在播放：${found.title}`,
+    at: Date.now(),
+    system: true,
+  };
+  spawnDanmaku($("danmaku-layer"), { name: notice.nickname, text: notice.text }, escapeHtml);
+  chatLog.append(notice);
 }
 
 function startTimer(fn) {

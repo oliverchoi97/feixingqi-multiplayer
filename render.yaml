@@ -10,3 +10,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Set the value in the Render dashboard. Enables /song YouTube search.
+      - key: YOUTUBE_API_KEY
+        sync: false

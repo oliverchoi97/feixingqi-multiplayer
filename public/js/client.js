@@ -1,5 +1,6 @@
 import { BoardView, COLOR_META, colorTitle } from "./render.js";
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
+import { bindSongSocket } from "./bgm.js";
 import { bindSessionButtons, setInMatch } from "./session-nav.js";
 
 const socket = window.io();
@@ -69,6 +70,7 @@ $("btn-close-rules").onclick = () => $("modal").hidden = true;
 $("btn-roll").onclick = () => requestRoll();
 bindCenterDie();
 const chatLog = bindChatBar($("chat-bar"), { onSend: sendChat });
+bindSongSocket(socket);
 bindSessionButtons({
   socket,
   lobbyPath: "/feixingqi",
@@ -508,6 +510,10 @@ function show(name) {
 }
 
 function sendChat(text) {
+  if (/^\/song/i.test(text)) {
+    socket.emit("chat", text);
+    return true;
+  }
   const now = Date.now();
   if (now - lastChatAt < 800) {
     toast("說慢一點");

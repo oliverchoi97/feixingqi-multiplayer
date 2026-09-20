@@ -1,4 +1,5 @@
 import { bindChatBar, setChatOpen, spawnDanmaku } from "./danmaku.js";
+import { bindSongSocket } from "./bgm.js";
 import { bindSessionButtons, setInMatch } from "./session-nav.js";
 import { boardLayout, cellCenter, eventOffset, hitCell } from "/shared/boardLayout.js";
 
@@ -85,6 +86,7 @@ if (KIND === "guosanguan") {
 }
 
 const chatLog = bindChatBar($("chat-bar"), { onSend: sendChat });
+bindSongSocket(socket);
 bindSessionButtons({
   socket,
   lobbyPath: PATH,
@@ -383,6 +385,10 @@ function show(name) {
 }
 
 function sendChat(text) {
+  if (/^\/song/i.test(text)) {
+    socket.emit("chat", text);
+    return true;
+  }
   const now = Date.now();
   if (now - lastChatAt < 800) {
     toast("說慢一點");

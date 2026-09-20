@@ -37,4 +37,17 @@ describe("site BGM", () => {
       assert.match(html, /src="\/js\/bgm\.js"/, f);
     }
   });
+
+  it("chat bars hint /song and allow a longer command", async () => {
+    const files = await htmlFiles(publicDir);
+    let chatPages = 0;
+    for (const f of files) {
+      const html = await readFile(f, "utf8");
+      if (!html.includes('id="chat-input"')) continue;
+      chatPages += 1;
+      assert.match(html, /id="chat-input"[^>]*maxlength="72"/, f);
+      assert.match(html, /placeholder="彈幕… \/song 歌名"/, f);
+    }
+    assert.equal(chatPages, 7);
+  });
 });

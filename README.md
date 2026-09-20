@@ -30,6 +30,10 @@ npm run dev
 
 全站左下角有 **開啟音樂／靜音**（`public/js/bgm.js`），用 YouTube IFrame API 循環播放公開播放清單 [PLxj77DstROao_Y-Ypu-P0jAiNMwK2hHAr](https://www.youtube.com/playlist?list=PLxj77DstROao_Y-Ypu-P0jAiNMwK2hHAr)。不需登入。瀏覽器常會擋住有聲自動播放：第一次點「開啟音樂」（或之後任一操作）才出聲；選擇會記在 localStorage，換頁仍有效。播放清單須維持**公開或未列出**才能嵌入；若改成私人，按鈕會顯示無法播放。
 
+候機室與對局聊天可輸入 **`/song 歌手+歌`** 或 **`/song artist song`**（`/song` 後面空白可有可無，之後整段當搜尋字）。伺服器用 YouTube Data API v3 `search.list` 取第一筆可嵌入影片，用 Socket.IO 廣播 `song`（含 `videoId`）給同房所有人，共用同一個 IFrame 播放器插播；該曲結束後回到原本循環播放清單。彈幕不會出現原始 `/song …` 指令，改為「🎵 正在播放：…」。每位玩家與每個房間約 20 秒只能插一次；查詢會去掉 HTML，最長 56 字。首頁沒有聊天欄，此指令只在各遊戲頁有效。踩地雷單人沒有房間，改走 `GET /api/song?q=`，只在自己這台播放。
+
+需要環境變數 **`YOUTUBE_API_KEY`**（或 `GOOGLE_API_KEY`），不要把金鑰寫進程式。未設定時聊天會提示「插歌未設定 API key」。本機可在啟動前 `export YOUTUBE_API_KEY=你的金鑰`。Google Cloud 專案須啟用 **YouTube Data API v3**。
+
 每個遊戲在**對局進行中**有 **結束遊戲**，候機室與對局都有 **回到主選單**（需確認）：
 
 - **結束遊戲**：只在開局後顯示。伺服器強制結束該房目前對局。飛行棋／棋類／猜猜畫畫回到該遊戲候機室；踩地雷回到模式選擇。房間裡其他人一齊離開對局畫面。單人踩地雷要等**揭開第一格**才出現（選難度後的空盤不算開局）。
@@ -41,7 +45,7 @@ npm run dev
 
 伺服器綁定 `0.0.0.0` 與 `process.env.PORT`。房間狀態在記憶體裡，**請保持單一實例**。
 
-- Render：讀 `render.yaml`（免費 Web Service、`npm install` / `npm start`、健康檢查 `/healthz`、`numInstances: 1`）。閒置後會休眠。
+- Render：讀 `render.yaml`（免費 Web Service、`npm install` / `npm start`、健康檢查 `/healthz`、`numInstances: 1`）。閒置後會休眠。插歌請在 Dashboard → Environment 新增密鑰 `YOUTUBE_API_KEY`（`render.yaml` 以 `sync: false` 宣告，不會把金鑰寫進 repo）。
 - Fly.io：`fly.toml` + `Dockerfile`。
 - Railway：讀 `Procfile`。
 

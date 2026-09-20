@@ -75,3 +75,7 @@ body:has(.chat-log.open) .bgm-root {
   line-height: 1.45;
   font-weight: 700;
 }
+
+.bgm-error.bgm-now {
+  color: var(--ink);
+}
