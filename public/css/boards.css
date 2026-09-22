@@ -53,6 +53,11 @@
   touch-action: manipulation;
 }
 
+.board-canvas-wrap.gomoku {
+  width: min(100%, 90dvh, 960px);
+  max-width: 960px;
+}
+
 .board-canvas-wrap::before {
   content: "";
   display: block;

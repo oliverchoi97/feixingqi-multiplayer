@@ -11,6 +11,7 @@ import {
   toggleFlag,
 } from "../shared/mines.js";
 import { makeCode, makeId } from "./rooms.js";
+import { broadcastViews } from "./ioUtil.js";
 
 const RACE = PRESETS.C;
 
@@ -206,11 +207,8 @@ export function endMinesMatch(room) {
 }
 
 export function broadcastMines(room, nsp) {
-  for (const p of room.players) {
-    if (!p.socketId) continue;
-    const sock = nsp.sockets.get(p.socketId);
-    if (!sock) continue;
-    sock.emit("lobby", minesLobbyView(room, p.playerId));
-    if (room.game) sock.emit("state", minesGameView(room, p.playerId));
-  }
+  broadcastViews(nsp, room, (sock, playerId) => {
+    sock.emit("lobby", minesLobbyView(room, playerId));
+    if (room.game) sock.emit("state", minesGameView(room, playerId));
+  });
 }

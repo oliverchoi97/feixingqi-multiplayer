@@ -22,13 +22,17 @@ describe("site BGM", () => {
     const files = await htmlFiles(publicDir);
     const rel = files.map((f) => path.relative(publicDir, f)).sort();
     assert.deepEqual(rel, [
+      "battleship/index.html",
       "drawguess/index.html",
       "feixingqi/index.html",
       "go/index.html",
       "gomoku/index.html",
       "guosanguan/index.html",
+      "hammintoi/index.html",
       "index.html",
       "minesweeper/index.html",
+      "oldmaid/index.html",
+      "oneatwob/index.html",
       "othello/index.html",
     ]);
     for (const f of files) {
@@ -48,7 +52,7 @@ describe("site BGM", () => {
       assert.match(html, /id="chat-input"[^>]*maxlength="72"/, f);
       assert.match(html, /placeholder="彈幕… \/song 歌名"/, f);
     }
-    assert.equal(chatPages, 7);
+    assert.equal(chatPages, 11);
   });
 
   it("restores the interrupted playlist index after /song, not item 0", async () => {

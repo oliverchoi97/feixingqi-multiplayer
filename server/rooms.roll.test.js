@@ -26,7 +26,7 @@ describe("extra-turn roll after takeoff", () => {
   });
 
   it("allows a 6 takeoff extra turn even while the move animation is still busy", () => {
-    const room = yellowHost(() => 0.99);
+    const room = yellowHost(() => 0.65);
     const first = handleRoll(room, "h");
     assert.equal(first.ok, true);
     assert.equal(first.roll, 6);
@@ -46,7 +46,7 @@ describe("extra-turn roll after takeoff", () => {
   });
 
   it("rejects a roll while selecting a piece and tells the client to wait if busy", () => {
-    const room = yellowHost(() => 0.99);
+    const room = yellowHost(() => 0.65);
     handleRoll(room, "h");
     assert.equal(room.game.action, "select");
     room.busy = true;

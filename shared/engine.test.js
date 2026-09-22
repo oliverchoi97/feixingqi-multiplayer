@@ -37,18 +37,24 @@ function put(state, color, id, loc, index) {
 }
 
 describe("takeoff", () => {
-  it("requires a 6 to leave the hangar", () => {
+  it("leaves the hangar on 2, 4, or 6, not odd rolls", () => {
     const state = stateWith();
+    assert.equal(legalMoves(state, "yellow", 1).length, 0);
+    assert.equal(legalMoves(state, "yellow", 3).length, 0);
     assert.equal(legalMoves(state, "yellow", 5).length, 0);
+    assert.equal(legalMoves(state, "yellow", 2).length, 4);
+    assert.equal(legalMoves(state, "yellow", 4).length, 4);
     assert.equal(legalMoves(state, "yellow", 6).length, 4);
   });
 
-  it("places a plane on the takeoff pad, not the first track cell", () => {
-    const state = stateWith();
-    const sim = simulateMove(state, "yellow", 0, 6);
-    assert.equal(sim.end.loc, "launch");
-    assert.equal(sim.end.index, COLOR_META.yellow.launch);
-    assert.equal(sim.path[0].kind, "takeoff");
+  it("places a plane on the takeoff pad for 2, 4, and 6", () => {
+    for (const roll of [2, 4, 6]) {
+      const state = stateWith();
+      const sim = simulateMove(state, "yellow", 0, roll);
+      assert.equal(sim.end.loc, "launch", `roll ${roll}`);
+      assert.equal(sim.end.index, COLOR_META.yellow.launch);
+      assert.equal(sim.path[0].kind, "takeoff");
+    }
   });
 
   it("does not capture the takeoff track cell; the next roll of 1 does", () => {
@@ -227,6 +233,20 @@ describe("turns", () => {
     assert.equal(state.seats[state.turnIndex].color, "yellow");
   });
 
+  it("does not grant an extra turn after taking off on 2 or 4", () => {
+    for (const roll of [2, 4]) {
+      const state = stateWith();
+      state.lastRoll = roll;
+      state.action = "select";
+      state.legalMoves = legalMoves(state, "yellow", roll);
+      const chosen = chooseMove(state, 0);
+      assert.equal(chosen.ok, true, `roll ${roll}`);
+      assert.equal(chosen.extraTurn, false, `roll ${roll}`);
+      assert.equal(state.planes.yellow[0].loc, "launch");
+      assert.equal(state.seats[state.turnIndex].color, "green");
+    }
+  });
+
   it("returns a plane to hangar on three 6s in a row", () => {
     const state = createGameState(seats(), () => 0.99);
     put(state, "yellow", 0, "track", COLOR_META.yellow.launch);
@@ -265,7 +285,7 @@ describe("AI", () => {
 });
 
 describe("dice", () => {
-  it("boosts sixes to about 25% while that color is still fully in hangar", () => {
+  it("boosts takeoff rolls 2/4/6 while that color is still fully in hangar", () => {
     const N = 20000;
     const counts = [0, 0, 0, 0, 0, 0, 0];
     for (let i = 0; i < N; i++) {
@@ -273,11 +293,11 @@ describe("dice", () => {
       const rolled = rollDie(state);
       counts[rolled.roll] += 1;
     }
-    const p6 = counts[6] / N;
-    assert.ok(Math.abs(p6 - 0.25) < 0.02, `P(6)=${p6}`);
-    for (let face = 1; face <= 5; face++) {
+    const takeoff = (counts[2] + counts[4] + counts[6]) / N;
+    assert.ok(Math.abs(takeoff - 0.66) < 0.03, `P(2,4,6)=${takeoff}`);
+    for (const face of [2, 4, 6]) {
       const p = counts[face] / N;
-      assert.ok(Math.abs(p - 0.15) < 0.02, `P(${face})=${p}`);
+      assert.ok(Math.abs(p - 0.22) < 0.03, `P(${face})=${p}`);
     }
   });
 
@@ -299,8 +319,8 @@ describe("dice", () => {
   });
 
   it("keeps the boost only for colors that have not launched", () => {
-    assert.equal(sampleDieFace(() => 0.74, true), 5);
-    assert.equal(sampleDieFace(() => 0.75, true), 6);
+    assert.equal(sampleDieFace(() => 0.0, true), 2);
+    assert.equal(sampleDieFace(() => 0.65, true), 6);
     assert.equal(sampleDieFace(() => 0.74, false), 5);
     assert.equal(sampleDieFace(() => 5 / 6, false), 6);
   });

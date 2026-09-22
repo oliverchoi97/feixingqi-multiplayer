@@ -24,6 +24,7 @@ import {
   startGame,
   endMatch,
   removePlayer,
+  setAutoplay,
 } from "./rooms.js";
 import {
   broadcastMines,
@@ -56,7 +57,9 @@ import {
 } from "./tableRooms.js";
 import {
   addStroke,
+  addCustomWord,
   broadcastDraw,
+  chooseDrawWord,
   clearDrawTimers,
   clearStrokes,
   createDrawRoom,
@@ -66,14 +69,33 @@ import {
   handleGuess,
   joinDrawRoom,
   nextDrawRound,
+  passDrawWord,
   removeDrawPlayer,
   ROUND_MS,
   scheduleDraw,
   setDrawReady,
   startDrawGame,
 } from "./drawRooms.js";
+import {
+  PARTY_GAMES,
+  armPartyTimers,
+  broadcastParty,
+  clearPartyTimers,
+  createPartyRoom,
+  endPartyMatch,
+  handlePartyDisconnect,
+  handlePartyMove,
+  isPartyAiTurn,
+  joinPartyRoom,
+  maybePartyAi,
+  partyGameView,
+  removePartyPlayer,
+  setPartyReady,
+  startPartyGame,
+} from "./partyRooms.js";
 import { takeChat, appendRoomChat, clearRoomChat, publicChatLog } from "./chat.js";
 import { parseSongCommand, takeSong, searchYouTubeVideo, SONG_COOLDOWN_MS } from "./song.js";
+import { nspSocketMap } from "./ioUtil.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 43177);
@@ -82,6 +104,7 @@ const rooms = new Map();
 const minesRooms = new Map();
 const tableRooms = new Map();
 const drawRooms = new Map();
+const partyRooms = new Map();
 
 const app = express();
 app.set("trust proxy", 1);
@@ -106,6 +129,11 @@ const pages = {
   "/guosanguan": ["guosanguan", "index.html"],
   "/drawguess": ["drawguess", "index.html"],
   "/reversi": ["othello", "index.html"],
+  "/oneatwob": ["oneatwob", "index.html"],
+  "/1a2b": ["oneatwob", "index.html"],
+  "/battleship": ["battleship", "index.html"],
+  "/hammintoi": ["hammintoi", "index.html"],
+  "/oldmaid": ["oldmaid", "index.html"],
 };
 
 for (const [route, parts] of Object.entries(pages)) {
@@ -158,6 +186,11 @@ function getDrawRoom(code) {
   return drawRooms.get(String(code).trim().toUpperCase()) ?? null;
 }
 
+function getPartyRoom(code) {
+  if (!code) return null;
+  return partyRooms.get(String(code).trim().toUpperCase()) ?? null;
+}
+
 function pruneRooms() {
   const now = Date.now();
   for (const [code, room] of rooms) {
@@ -186,14 +219,21 @@ function pruneRooms() {
       drawRooms.delete(code);
     }
   }
+  for (const [code, room] of partyRooms) {
+    const anyone = room.players.filter((p) => p.type === "human").some((p) => p.connected);
+    if (!anyone && now - room.createdAt > 1000 * 60 * 30) {
+      clearPartyTimers(room);
+      partyRooms.delete(code);
+    }
+  }
 }
 setInterval(pruneRooms, 60_000);
 
 function emitEnded(nsp, room, { requesterId, toMenu, destOthers }) {
-  const map = nsp.sockets?.sockets ?? nsp.sockets;
+  const map = nspSocketMap(nsp);
   for (const p of room.players) {
     if (p.type === "ai" || !p.socketId) continue;
-    const sock = map?.get?.(p.socketId);
+    const sock = map.get(p.socketId);
     if (!sock) continue;
     const dest = p.playerId === requesterId && toMenu ? "menu" : destOthers;
     sock.emit("matchEnded", { dest, code: room.code });
@@ -348,6 +388,18 @@ io.on("connection", (socket) => {
       return;
     }
     begin(room);
+  });
+
+  socket.on("autoplay", (on) => {
+    const room = getRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = setAutoplay(room, socket.data.playerId, on);
+    if (!result.ok) {
+      if (result.error) socket.emit("errorMsg", result.error);
+      return;
+    }
+    broadcast(room, io);
+    if (result.autoplay && room.game) maybeContinueAi(room, io);
   });
 
   socket.on("chooseColor", (color) => {
@@ -767,6 +819,41 @@ drawNsp.on("connection", (socket) => {
     beginDraw(room);
   });
 
+  socket.on("pickWord", (word) => {
+    const room = getDrawRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = chooseDrawWord(room, socket.data.playerId, word);
+    if (!result.ok) {
+      if (result.error) socket.emit("errorMsg", result.error);
+      return;
+    }
+    broadcastDraw(room, drawNsp);
+    armDrawTimer(room);
+  });
+
+  socket.on("passWord", () => {
+    const room = getDrawRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = passDrawWord(room, socket.data.playerId);
+    if (!result.ok) {
+      if (result.error) socket.emit("errorMsg", result.error);
+      return;
+    }
+    broadcastDraw(room, drawNsp);
+  });
+
+  socket.on("addWord", (word) => {
+    const room = getDrawRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = addCustomWord(room, word);
+    if (!result.ok) {
+      if (result.error) socket.emit("errorMsg", result.error);
+      return;
+    }
+    socket.emit("errorMsg", `已加入詞庫：${result.word}`);
+    broadcastDraw(room, drawNsp);
+  });
+
   socket.on("stroke", (stroke) => {
     const room = getDrawRoom(socket.data.roomCode);
     if (!room) return;
@@ -854,6 +941,131 @@ drawNsp.on("connection", (socket) => {
   attachChat(socket, () => getDrawRoom(socket.data.roomCode), drawNsp);
 });
 
+const partyNsp = io.of("/party");
+partyNsp.on("connection", (socket) => {
+  socket.on("create", ({ kind, nickname, playerId } = {}) => {
+    if (!PARTY_GAMES[kind]) {
+      socket.emit("errorMsg", "沒有這個遊戲");
+      return;
+    }
+    const id = playerId || makeId();
+    const room = createPartyRoom(kind, {
+      playerId: id,
+      nickname: sanitizeName(nickname),
+      socketId: socket.id,
+    });
+    partyRooms.set(room.code, room);
+    socket.data.playerId = id;
+    socket.data.roomCode = room.code;
+    socket.join(room.code);
+    socket.emit("joined", { playerId: id, code: room.code, kind });
+    broadcastParty(room, partyNsp);
+  });
+
+  socket.on("join", ({ code, nickname, playerId, kind } = {}) => {
+    const room = getPartyRoom(code);
+    if (!room) {
+      socket.emit("errorMsg", "找不到這個房間");
+      return;
+    }
+    if (kind && room.kind !== kind) {
+      socket.emit("errorMsg", "房間代碼與遊戲不符");
+      return;
+    }
+    const id = playerId || makeId();
+    const result = joinPartyRoom(room, {
+      playerId: id,
+      nickname: sanitizeName(nickname),
+      socketId: socket.id,
+    });
+    if (!result.ok) {
+      socket.emit("errorMsg", result.error);
+      return;
+    }
+    socket.data.playerId = id;
+    socket.data.roomCode = room.code;
+    socket.join(room.code);
+    socket.emit("joined", { playerId: id, code: room.code, kind: room.kind, rejoin: result.rejoin });
+    broadcastParty(room, partyNsp);
+    sendChatHistory(socket, room);
+    if (room.game) socket.emit("state", partyGameView(room, id));
+  });
+
+  socket.on("ready", (ready) => {
+    const room = getPartyRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = setPartyReady(room, socket.data.playerId, ready);
+    if (!result.ok) return;
+    broadcastParty(room, partyNsp);
+    if (result.autoStart) beginParty(room);
+  });
+
+  socket.on("start", () => {
+    const room = getPartyRoom(socket.data.roomCode);
+    if (!room) return;
+    if (socket.data.playerId !== room.hostId) {
+      socket.emit("errorMsg", "只有房主可以開始遊戲");
+      return;
+    }
+    beginParty(room);
+  });
+
+  socket.on("move", (payload) => {
+    const room = getPartyRoom(socket.data.roomCode);
+    if (!room) return;
+    const result = handlePartyMove(room, socket.data.playerId, payload);
+    if (!result.ok) {
+      socket.emit("errorMsg", result.error);
+      return;
+    }
+    broadcastParty(room, partyNsp);
+    armPartyTimers(room, partyNsp);
+    if (isPartyAiTurn(room)) maybePartyAi(room, partyNsp);
+  });
+
+  socket.on("endMatch", () => {
+    const room = getPartyRoom(socket.data.roomCode);
+    if (!room) return;
+    endPartyMatch(room);
+    resetMatchChat(partyNsp, room);
+    emitEnded(partyNsp, room, {
+      requesterId: socket.data.playerId,
+      toMenu: false,
+      destOthers: "lobby",
+    });
+    broadcastParty(room, partyNsp);
+  });
+
+  socket.on("exitToMenu", () => {
+    const room = getPartyRoom(socket.data.roomCode);
+    if (!room) {
+      socket.emit("matchEnded", { dest: "menu" });
+      return;
+    }
+    endPartyMatch(room);
+    resetMatchChat(partyNsp, room);
+    emitEnded(partyNsp, room, {
+      requesterId: socket.data.playerId,
+      toMenu: true,
+      destOthers: "lobby",
+    });
+    removePartyPlayer(room, socket.data.playerId);
+    socket.leave(room.code);
+    socket.data.roomCode = null;
+    broadcastParty(room, partyNsp);
+  });
+
+  socket.on("disconnect", () => {
+    const room = getPartyRoom(socket.data.roomCode);
+    if (!room) return;
+    handlePartyDisconnect(room, socket.data.playerId);
+    broadcastParty(room, partyNsp);
+    if (isPartyAiTurn(room)) maybePartyAi(room, partyNsp);
+  });
+
+  attachChat(socket, () => getPartyRoom(socket.data.roomCode), partyNsp);
+});
+
 function begin(room) {
   const result = startGame(room);
   if (!result.ok) {
@@ -897,7 +1109,19 @@ function beginDraw(room) {
   }
   broadcastDraw(room, drawNsp);
   drawNsp.to(room.code).emit("chatLog", publicChatLog(room));
-  armDrawTimer(room);
+}
+
+function beginParty(room) {
+  const result = startPartyGame(room);
+  if (!result.ok) {
+    if (result.error !== "對局已經開始") partyNsp.to(room.code).emit("errorMsg", result.error);
+    return;
+  }
+  partyNsp.to(room.code).emit("started");
+  partyNsp.to(room.code).emit("chatLog", publicChatLog(room));
+  broadcastParty(room, partyNsp);
+  armPartyTimers(room, partyNsp);
+  if (isPartyAiTurn(room)) maybePartyAi(room, partyNsp);
 }
 
 function armDrawTimer(room) {

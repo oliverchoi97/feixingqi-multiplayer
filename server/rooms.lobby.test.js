@@ -4,8 +4,11 @@ import {
   chooseColor,
   createRoom,
   endMatch,
+  gameView,
+  isAiTurn,
   joinRoom,
   lobbyView,
+  setAutoplay,
   setReady,
   startGame,
 } from "./rooms.js";
@@ -70,5 +73,29 @@ describe("lobby color pick", () => {
     assert.equal(room.game, null);
     assert.equal(room.players.every((p) => p.type === "human"), true);
     assert.equal(room.players[0].ready, false);
+  });
+
+  it("shows a joining player on the host lobby view immediately", () => {
+    const room = hostRoom();
+    assert.equal(lobbyView(room, "h").playerCount, 1);
+    joinRoom(room, { playerId: "g", nickname: "乙", socketId: "s2" });
+    const hostView = lobbyView(room, "h");
+    assert.equal(hostView.playerCount, 2);
+    const guestView = lobbyView(room, "g");
+    assert.equal(guestView.playerCount, 2);
+    assert.equal(guestView.isHost, false);
+  });
+
+  it("treats 託管 as an AI-controlled local seat", () => {
+    const room = hostRoom();
+    chooseColor(room, "h", "yellow");
+    setReady(room, "h", true);
+    startGame(room);
+    assert.equal(setAutoplay(room, "h", true).autoplay, true);
+    assert.equal(isAiTurn(room), true);
+    const view = gameView(room, "h");
+    assert.equal(view.autoplay, true);
+    assert.equal(view.yourTurn, false);
+    assert.equal(setAutoplay(room, "h", false).autoplay, false);
   });
 });

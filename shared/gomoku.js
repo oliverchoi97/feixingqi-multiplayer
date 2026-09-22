@@ -1,6 +1,6 @@
-/** 五子棋：15×15 無禁手，連五即勝。先手黑=1。 */
+/** 五子棋：10×10 無禁手，連五即勝。先手黑=1。 */
 
-export const SIZE = 15;
+export const SIZE = 10;
 export const SIDES = {
   1: { id: 1, nameZh: "黑", mark: "●" },
   2: { id: 2, nameZh: "白", mark: "○" },
@@ -118,7 +118,7 @@ export function pickAiMove(game) {
   const pool = near.length ? near : empties;
   for (const m of pool) if (wouldWin(game, m.x, m.y, me)) return m;
   for (const m of pool) if (wouldWin(game, m.x, m.y, foe)) return m;
-  if (!game.last) return { x: 7, y: 7 };
+  if (!game.last) return { x: 4, y: 4 };
   const scored = pool.map((m) => {
     let s = 0;
     for (const [dx, dy] of DIRS) {
@@ -127,7 +127,7 @@ export function pickAiMove(game) {
       s += countDir(game.cells, m.x, m.y, dx, dy, foe);
       s += countDir(game.cells, m.x, m.y, -dx, -dy, foe);
     }
-    const d = Math.abs(m.x - 7) + Math.abs(m.y - 7);
+    const d = Math.abs(m.x - 4) + Math.abs(m.y - 4);
     return { m, s: s * 10 - d };
   });
   scored.sort((a, b) => b.s - a.s);

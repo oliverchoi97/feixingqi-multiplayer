@@ -1,0 +1,53 @@
+.sea-grid {
+  display: grid;
+  gap: 2px;
+  width: min(100%, 360px);
+  margin: 0 auto 12px;
+}
+
+.sea-cell {
+  aspect-ratio: 1;
+  border: 1px solid #8ab;
+  background: #1a4a6a;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sea-cell.ship {
+  background: #c9a227;
+}
+
+.sea-cell.miss {
+  background: #9bb;
+}
+
+.sea-cell.hit {
+  background: #c43030;
+}
+
+.sea-cell:disabled {
+  cursor: default;
+}
+
+.card-chip {
+  display: inline-block;
+  margin: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--line);
+  font-weight: 800;
+}
+
+.pile-card {
+  font-size: 2.4rem;
+  font-weight: 900;
+  text-align: center;
+  margin: 12px 0;
+}
+
+.history-list {
+  max-height: 180px;
+  overflow: auto;
+  padding-left: 1.2rem;
+}

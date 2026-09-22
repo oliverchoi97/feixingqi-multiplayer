@@ -71,6 +71,9 @@ $("btn-roll").onclick = () => requestRoll();
 bindCenterDie();
 const chatLog = bindChatBar($("chat-bar"), { onSend: sendChat });
 bindSongSocket(socket);
+$("btn-autoplay").onclick = () => {
+  socket.emit("autoplay", !game?.autoplay);
+};
 bindSessionButtons({
   socket,
   lobbyPath: "/feixingqi",
@@ -106,7 +109,6 @@ socket.on("joined", (payload) => {
 socket.on("lobby", (view) => {
   lobby = view;
   readyOn = view.ready;
-  chatLog.clear();
   show("lobby");
   renderLobby(view);
 });
@@ -213,6 +215,17 @@ function renderGame(view) {
   $("turn-banner").textContent = turnText;
   $("board-hud").textContent = turnText;
   $("btn-roll").disabled = !(yours && view.action === "roll") || moving || dicePlaying;
+  const ap = $("btn-autoplay");
+  if (ap) {
+    ap.hidden = view.phase === "ended";
+    ap.textContent = view.autoplay ? "取消託管" : "託管";
+  }
+  const turnHud =
+    view.autoplay && view.yourColor === view.turnColor
+      ? `託管中（${turnName}）`
+      : turnText;
+  $("turn-banner").textContent = turnHud;
+  $("board-hud").textContent = turnHud;
   renderPiecePicks(view);
   $("roll-hint").textContent =
     view.action === "select" && yours

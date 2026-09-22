@@ -1,7 +1,7 @@
 {
   "name": "gaming-in-my-life",
   "version": "1.0.0",
-  "description": "Gaming In My Life：飛行棋、踩地雷、棋類與猜猜畫畫",
+  "description": "Gaming In My Life：飛行棋、踩地雷、棋類、猜猜畫畫與派對遊戲",
   "type": "module",
   "main": "server/index.js",
   "scripts": {

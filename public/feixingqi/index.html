@@ -47,7 +47,7 @@
             <button id="btn-join" class="btn" type="button">加入</button>
           </div>
         </div>
-        <p class="hint">規則採傳統玩法：擲 6 起飛、同色跳四格、虛線飛航、終點反彈。</p>
+        <p class="hint">規則採傳統玩法：擲 2、4 或 6 起飛、同色跳四格、虛線飛航、終點反彈。</p>
         <div class="session-strip">
           <button type="button" class="btn ghost" data-session="end">結束遊戲</button>
           <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
@@ -95,7 +95,8 @@
           <p id="last-roll" class="last-roll" hidden></p>
           <button id="btn-roll" class="btn primary wide" type="button" disabled>擲骰</button>
           <div id="piece-picks" class="piece-picks" hidden></div>
-          <p id="roll-hint" class="hint">輪到你時，在棋盤中央向上滑動骰子（也可點一下）。</p>
+          <p id="roll-hint" class="hint">輪到你時，在棋盤中央向上滑動骰子（也可點一下）。擲 2、4、6 可起飛。</p>
+          <button id="btn-autoplay" class="btn ghost wide" type="button">託管</button>
         </div>
         <div class="log-box">
           <p class="eyebrow">對局紀錄</p>
@@ -107,10 +108,11 @@
           <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
         </div>
       </aside>
-      <div class="board-wrap">
+      <div class="board-col">
+        <div id="board-hud" class="board-hud" aria-live="polite"></div>
+        <div class="board-wrap">
         <img class="board-art" src="/board.svg" alt="飛行棋棋盤" />
         <canvas id="board" width="950" height="950"></canvas>
-        <div id="board-hud" class="board-hud" aria-hidden="true"></div>
         <div id="center-dice" class="center-dice" data-mode="off" aria-hidden="true">
           <div id="center-die-hit" class="center-die-hit" role="button" tabindex="0" aria-label="向上滑動擲骰">
             <div id="center-die" class="center-die">
@@ -126,6 +128,7 @@
             <p id="center-die-hint" class="center-die-hint">向上滑動擲骰</p>
           </div>
         </div>
+        </div>
       </div>
     </section>
 
@@ -133,7 +136,7 @@
       <div class="modal-card">
         <h3>傳統飛行棋規則</h3>
         <div class="rules">
-          <p>每方 4 架飛機，停在角落機場。必須擲出 <strong>6</strong> 才能起飛到起飛格；若已有飛機在外，6 點可起飛或走現有飛機。</p>
+          <p>每方 4 架飛機，停在角落機場。必須擲出 <strong>2、4 或 6</strong> 才能起飛到起飛格；若已有飛機在外，這些點數可起飛或走現有飛機。</p>
           <p>擲出 6 走完後可再擲。同一回合連續三次 6：該玩家一架仍在場上的飛機返回機場（三次六返大陸）。</p>
           <p>順時針沿外圈走。停在自己顏色的格子（終點跑道除外）可再跳 4 格。</p>
           <p>若擲骰後正好停在己色長虛線起點，沿虛線飛到對面，再跳 4 格。若是「跳」到虛線起點，仍可飛過，但不再加跳 4 格。飛航途中壓到的敵機（含對家終點跑道交會格）一律遣返機場。</p>

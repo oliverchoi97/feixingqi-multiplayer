@@ -4,7 +4,7 @@ import { applyMove, createGame, pickAiMove, winnerOf } from "./guosanguan.js";
 import * as gomoku from "./gomoku.js";
 import * as othello from "./othello.js";
 import * as go from "./go.js";
-import { matchGuess, pickWord } from "./drawguess.js";
+import { matchGuess, pickWord, WORDS } from "./drawguess.js";
 
 const two = (a = "h", b = "g") => [
   { playerId: a, name: "甲", type: "human", side: 1 },
@@ -50,8 +50,10 @@ describe("過三關", () => {
 });
 
 describe("五子棋", () => {
-  it("detects a horizontal five", () => {
+  it("uses a 10×10 board and detects a horizontal five", () => {
+    assert.equal(gomoku.SIZE, 10);
     const g = gomoku.createGame(two());
+    assert.equal(g.cells.length, 100);
     for (let x = 0; x < 4; x++) {
       assert.equal(gomoku.applyMove(g, 1, { x, y: 7 }).ok, true);
       assert.equal(gomoku.applyMove(g, 2, { x, y: 8 }).ok, true);
@@ -147,5 +149,10 @@ describe("猜猜畫畫 words", () => {
     const w = pickWord(new Set());
     assert.equal(typeof w, "string");
     assert.ok(w.length);
+  });
+
+  it("ships about a thousand Traditional Chinese words", () => {
+    assert.ok(WORDS.length >= 1000, `WORDS=${WORDS.length}`);
+    assert.equal(new Set(WORDS).size, WORDS.length);
   });
 });

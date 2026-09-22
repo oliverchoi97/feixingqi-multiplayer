@@ -1,5 +1,6 @@
 import { makeCode, makeId } from "./rooms.js";
-import { MAX_PLAYERS, MIN_PLAYERS, ROUND_MS, matchGuess, pickWord } from "../shared/drawguess.js";
+import { MAX_PLAYERS, MIN_PLAYERS, ROUND_MS, matchGuess, pickChoices, sanitizeWord } from "../shared/drawguess.js";
+import { broadcastViews } from "./ioUtil.js";
 
 export { makeId, MAX_PLAYERS, MIN_PLAYERS, ROUND_MS };
 
@@ -19,6 +20,7 @@ export function createDrawRoom(host) {
       },
     ],
     game: null,
+    customWords: [],
     chatLog: [],
     timers: new Set(),
   };
@@ -60,25 +62,71 @@ export function startDrawGame(room) {
   if (room.game) return { ok: false, error: "對局已經開始" };
   const seated = room.players.filter((p) => p.connected);
   if (seated.length < MIN_PLAYERS) return { ok: false, error: "至少需要兩人" };
-  if (!seated.every((p) => p.ready)) return { ok: false, error: "大家都要準備" };
   const scores = {};
   for (const p of room.players) scores[p.playerId] = 0;
+  const used = new Set();
+  const choices = pickChoices(used, room.customWords);
   room.game = {
-    phase: "drawing",
+    phase: "choose",
     roundIndex: 0,
-    maxRounds: Math.max(3, seated.length),
+    maxRounds: Math.max(seated.length * 2, seated.length + 1),
     drawerId: seated[0].playerId,
-    word: pickWord(new Set()),
-    used: new Set(),
+    word: null,
+    choices,
+    used,
     strokes: [],
     scores,
     guessed: [],
-    roundEndsAt: Date.now() + ROUND_MS,
+    roundEndsAt: null,
     lastCorrect: null,
   };
-  room.game.used.add(room.game.word);
   room.chatLog = [];
   return { ok: true };
+}
+
+function dealChoices(room) {
+  room.game.choices = pickChoices(room.game.used, room.customWords);
+  room.game.word = null;
+  room.game.phase = "choose";
+  room.game.strokes = [];
+  room.game.guessed = [];
+  room.game.lastCorrect = null;
+  room.game.roundEndsAt = null;
+}
+
+export function chooseDrawWord(room, playerId, word) {
+  if (!room.game || room.game.phase !== "choose") return { ok: false, error: "現在不能選題" };
+  if (playerId !== room.game.drawerId) return { ok: false, error: "只有畫家可以選題" };
+  const pick = sanitizeWord(word);
+  if (!room.game.choices.includes(pick)) return { ok: false, error: "請從三個題目裡選" };
+  room.game.word = pick;
+  room.game.used.add(pick);
+  room.game.phase = "drawing";
+  room.game.roundEndsAt = Date.now() + ROUND_MS;
+  room.game.strokes = [];
+  return { ok: true };
+}
+
+export function passDrawWord(room, playerId) {
+  if (!room.game || room.game.phase !== "choose") return { ok: false, error: "現在不能換題" };
+  if (playerId !== room.game.drawerId) return { ok: false, error: "只有畫家可以換題" };
+  for (const w of room.game.choices || []) room.game.used.add(w);
+  dealChoices(room);
+  return { ok: true };
+}
+
+export function addCustomWord(room, raw) {
+  const word = sanitizeWord(raw);
+  if (!word) return { ok: false, error: "請輸入詞語" };
+  if (!(room.customWords || []).includes(word)) {
+    room.customWords = room.customWords || [];
+    room.customWords.push(word);
+    if (room.customWords.length > 80) room.customWords.shift();
+  }
+  if (room.game?.phase === "choose" && word) {
+    room.game.choices = [word, ...(room.game.choices || []).filter((w) => w !== word)].slice(0, 3);
+  }
+  return { ok: true, word };
 }
 
 export function nextDrawRound(room) {
@@ -97,13 +145,7 @@ export function nextDrawRound(room) {
   room.game.roundIndex += 1;
   const drawer = seated[room.game.roundIndex % seated.length];
   room.game.drawerId = drawer.playerId;
-  room.game.word = pickWord(room.game.used);
-  room.game.used.add(room.game.word);
-  room.game.strokes = [];
-  room.game.guessed = [];
-  room.game.lastCorrect = null;
-  room.game.phase = "drawing";
-  room.game.roundEndsAt = Date.now() + ROUND_MS;
+  dealChoices(room);
   return { ok: true, ended: false };
 }
 
@@ -149,7 +191,8 @@ export function drawLobbyView(room, viewerId) {
     phase: room.game ? room.game.phase : "lobby",
     isHost: you?.playerId === room.hostId,
     ready: you?.ready ?? false,
-    canStart: seated.length >= MIN_PLAYERS && seated.every((p) => p.ready) && !room.game,
+    canStart: seated.length >= MIN_PLAYERS && !room.game,
+    customCount: (room.customWords || []).length,
     players: room.players.map((p) => ({
       playerId: p.playerId,
       name: p.nickname,
@@ -174,8 +217,10 @@ export function drawGameView(room, viewerId) {
     drawerId: g.drawerId,
     drawerName: drawer?.nickname ?? "畫家",
     youDrawer,
-    word: youDrawer || g.phase !== "drawing" ? g.word : null,
+    word: youDrawer || g.phase === "reveal" || g.phase === "ended" ? g.word : null,
+    choices: youDrawer && g.phase === "choose" ? g.choices : [],
     hint: g.word ? `${g.word.length} 個字` : "",
+    customCount: (room.customWords || []).length,
     strokes: g.strokes,
     scores: room.players.map((p) => ({
       playerId: p.playerId,
@@ -230,13 +275,10 @@ export function handleDrawDisconnect(room, playerId) {
 }
 
 export function broadcastDraw(room, nsp) {
-  for (const p of room.players) {
-    if (!p.socketId) continue;
-    const sock = nsp.sockets.get(p.socketId);
-    if (!sock) continue;
-    if (room.game) sock.emit("state", drawGameView(room, p.playerId));
-    else sock.emit("lobby", drawLobbyView(room, p.playerId));
-  }
+  broadcastViews(nsp, room, (sock, playerId) => {
+    if (room.game) sock.emit("state", drawGameView(room, playerId));
+    else sock.emit("lobby", drawLobbyView(room, playerId));
+  });
 }
 
 function sanitizeStroke(stroke) {

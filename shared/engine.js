@@ -243,7 +243,7 @@ export function simulateMove(state, color, pieceId, roll) {
   const path = [];
 
   if (piece.loc === "hangar") {
-    if (roll !== 6) return null;
+    if (!canTakeOff(roll)) return null;
     const launch = COLOR_META[color].launch;
     // Pad is not a track square. Occupying `launch` would skip that cell on the next roll.
     // Capture only when a later roll actually lands on that track cell.
@@ -366,7 +366,7 @@ export function legalMoves(state, color, roll) {
   for (const plane of list) {
     if (plane.loc === "finished") continue;
     if (plane.loc === "hangar") {
-      if (roll === 6) {
+      if (canTakeOff(roll)) {
         const sim = simulateMove(state, color, plane.id, roll);
         if (sim) moves.push(sim);
       }
@@ -448,12 +448,18 @@ export function hasTakenOff(state, color) {
   return planes.some((p) => p.loc !== "hangar");
 }
 
-/** Fair d6, or takeoff boost: P(6)=1/4 and P(1..5)=3/20 each. */
-export function sampleDieFace(rng, boostSix) {
+export const TAKEOFF_ROLLS = new Set([2, 4, 6]);
+
+export function canTakeOff(roll) {
+  return TAKEOFF_ROLLS.has(Number(roll));
+}
+
+/** Fair d6, or hangar boost: P(2)=P(4)=P(6)=0.22, odds share the rest. */
+export function sampleDieFace(rng, boostTakeoff) {
   const u = rng();
-  if (!boostSix) return 1 + Math.min(5, Math.floor(u * 6));
-  if (u >= 0.75) return 6;
-  return 1 + Math.min(4, Math.floor((u / 0.75) * 5));
+  if (!boostTakeoff) return 1 + Math.min(5, Math.floor(u * 6));
+  if (u < 0.66) return [2, 4, 6][Math.min(2, Math.floor((u / 0.66) * 3))];
+  return [1, 3, 5][Math.min(2, Math.floor(((u - 0.66) / 0.34) * 3))];
 }
 
 export function rollDie(state) {

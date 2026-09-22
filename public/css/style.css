@@ -38,6 +38,18 @@ body {
   min-height: 100dvh;
 }
 
+body.chat-open {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body.chat-open .screen {
+  min-height: 0;
+  height: 100dvh;
+  overflow: auto;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+
 h1,
 h2,
 h3 {
@@ -78,6 +90,7 @@ h1 {
 
 .screen {
   min-height: 100dvh;
+  overflow: auto;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -397,22 +410,30 @@ input:focus {
   letter-spacing: 0.08em;
 }
 
+.board-col {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
 .board-hud {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
+  transform: none;
+  left: auto;
+  top: auto;
   z-index: 3;
   pointer-events: none;
-  max-width: calc(100% - 20px);
+  max-width: min(100%, 420px);
   padding: 6px 14px;
   border-radius: 999px;
-  background: rgba(255, 250, 240, 0.92);
+  background: rgba(255, 250, 240, 0.94);
   border: 1px solid rgba(42, 31, 20, 0.16);
-  box-shadow: 0 8px 20px rgba(42, 31, 20, 0.16);
+  box-shadow: 0 8px 20px rgba(42, 31, 20, 0.12);
   font-weight: 800;
   font-size: 0.86rem;
-  white-space: nowrap;
+  text-align: center;
 }
 
 .board-hud:empty {
@@ -750,9 +771,19 @@ input:focus {
 
   .board-wrap {
     width: min(100%, calc(100dvw - 16px));
-    max-height: min(calc(100dvw - 16px), 72dvh);
+    max-height: min(calc(100dvw - 16px), 68dvh);
     order: 1;
     border-radius: 18px;
+  }
+
+  .board-col {
+    order: 1;
+    width: 100%;
+  }
+
+  .board-hud {
+    font-size: 0.8rem;
+    white-space: normal;
   }
 
   .center-die {

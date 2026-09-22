@@ -8,6 +8,7 @@ import {
   publicState,
   rollDie,
 } from "../shared/engine.js";
+import { broadcastViews } from "./ioUtil.js";
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -182,12 +183,23 @@ export function startGame(room) {
 }
 
 export function gameView(room, playerId) {
+  const you = room.players.find((p) => p.playerId === playerId);
   const base = publicState(room.game, playerId);
+  const autoplay = Boolean(you?.autoplay);
   return {
     ...base,
     code: room.code,
     phase: room.game.phase === "ended" ? "ended" : "playing",
+    autoplay,
+    yourTurn: Boolean(base.yourTurn && !autoplay),
   };
+}
+
+export function setAutoplay(room, playerId, on) {
+  const p = room.players.find((x) => x.playerId === playerId);
+  if (!p || p.type !== "human") return { ok: false, error: "找不到玩家" };
+  p.autoplay = !!on;
+  return { ok: true, autoplay: p.autoplay };
 }
 
 export function animationMs(sim) {
@@ -224,7 +236,8 @@ export function isAiTurn(room) {
   if (!seat) return false;
   if (seat.type === "ai") return true;
   const player = room.players.find((p) => p.playerId === seat.playerId);
-  return player && !player.connected;
+  if (!player) return false;
+  return !player.connected || Boolean(player.autoplay);
 }
 
 export function aiAct(room, io) {
@@ -294,17 +307,10 @@ export function maybeContinueAi(room, io) {
 }
 
 export function broadcast(room, io) {
-  const sockets = io.sockets.adapter.rooms.get(room.code);
-  if (!sockets) {
-    io.to(room.code).emit("lobby", lobbyView(room, null));
-    return;
-  }
-  for (const socketId of sockets) {
-    const sock = io.sockets.sockets.get(socketId);
-    const playerId = sock?.data?.playerId;
+  broadcastViews(io, room, (sock, playerId) => {
     if (room.game) sock.emit("state", gameView(room, playerId));
     else sock.emit("lobby", lobbyView(room, playerId));
-  }
+  });
 }
 
 /** Game already expects a roll. Do not block on `busy` (move animation / AI think). */

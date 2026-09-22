@@ -26,13 +26,43 @@ export function bindChatBar(form, { onSend, escapeHtml: _escapeHtml } = {}) {
     if (onSend(text) === false) return;
     input.value = "";
   });
+  pinChatToViewport(form);
   return mountChatLog(form);
+}
+
+function pinChatToViewport(form) {
+  const apply = () => {
+    if (form.hidden) {
+      form.style.bottom = "";
+      return;
+    }
+    const vv = window.visualViewport;
+    if (!vv) {
+      form.style.bottom = "0px";
+      return;
+    }
+    const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    form.style.bottom = `${inset}px`;
+  };
+  apply();
+  window.visualViewport?.addEventListener("resize", apply);
+  window.visualViewport?.addEventListener("scroll", apply);
+  window.addEventListener("resize", apply);
 }
 
 export function setChatOpen(form, on) {
   if (!form) return;
   form.hidden = !on;
+  document.body.classList.toggle("chat-open", !!on);
   if (!on) form._chatLog?.collapse?.();
+  else {
+    form.style.bottom = "0px";
+    const vv = window.visualViewport;
+    if (vv) {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      form.style.bottom = `${inset}px`;
+    }
+  }
 }
 
 export function spawnDanmaku(layer, { name, text }, esc = escapeHtml) {

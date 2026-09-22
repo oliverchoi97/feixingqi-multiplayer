@@ -42,6 +42,12 @@ $("btn-ready").onclick = () => {
   socket.emit("ready", readyOn);
 };
 $("btn-start").onclick = () => socket.emit("start");
+$("btn-add-word").onclick = () => addCustomWord($("custom-word"));
+$("btn-add-word-play")?.addEventListener("click", () => addCustomWord($("custom-word-play")));
+$("custom-word-play")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") addCustomWord($("custom-word-play"));
+});
+$("btn-pass-word").onclick = () => socket.emit("passWord");
 $("btn-copy").onclick = async () => {
   if (!lobby) return;
   const url = `${location.origin}${PATH}?room=${lobby.code}`;
@@ -92,11 +98,12 @@ socket.on("joined", (payload) => {
   history.replaceState({}, "", `${PATH}?room=${payload.code}`);
 });
 socket.on("lobby", (view) => {
+  const leftPlay = Boolean(game);
   lobby = view;
   game = null;
   readyOn = view.ready;
   $("winner-modal").hidden = true;
-  chatLog.clear();
+  if (leftPlay) chatLog.clear();
   show("lobby");
   renderLobby(view);
 });
@@ -141,14 +148,22 @@ function joinTyped() {
   socket.emit("join", { code, nickname: me.nickname, playerId: me.playerId });
 }
 
+function addCustomWord(input) {
+  if (!input) return;
+  const w = input.value.trim();
+  if (!w) return toast("請輸入詞語");
+  socket.emit("addWord", w);
+  input.value = "";
+}
+
 function renderLobby(view) {
   $("lobby-code").textContent = view.code;
   $("btn-ready").textContent = view.ready ? "取消準備" : "準備";
   $("btn-start").hidden = !view.isHost;
   $("btn-start").disabled = !view.canStart;
   $("lobby-status").textContent = view.canStart
-    ? "可以開局。輪流當畫家，其他人猜詞。"
-    : "至少兩人準備後開局。沒有電腦。";
+    ? "可以開局。畫家選題，其他人猜詞。"
+    : "至少兩人即可開局。沒有電腦。";
   $("lobby-seats").innerHTML = view.players
     .map((p) => {
       const tag = p.you ? "你" : p.connected ? "在線" : "離線";
@@ -165,10 +180,32 @@ function renderPlay(view, { replay } = {}) {
     view.phase === "ended"
       ? "本局結束"
       : view.phase === "reveal"
-        ? `答案是「${view.word}」`
-        : view.youDrawer
-          ? `你來畫：${view.word}`
-          : `${view.drawerName} 作畫中 · ${view.hint}`;
+        ? `答對！答案是「${view.word}」`
+        : view.phase === "choose"
+          ? view.youDrawer
+            ? "請選一個題目，或換一題"
+            : `${view.drawerName} 正在選題`
+          : view.youDrawer
+            ? `你來畫：${view.word}`
+            : `${view.drawerName} 作畫中 · ${view.hint}`;
+  $("guess-row").hidden = view.youDrawer || view.phase !== "drawing";
+  $("draw-tools").hidden = !view.youDrawer || view.phase !== "drawing";
+  const picks = $("word-picks");
+  const pass = $("btn-pass-word");
+  if (view.youDrawer && view.phase === "choose") {
+    pass.hidden = false;
+    picks.hidden = false;
+    picks.innerHTML = (view.choices || [])
+      .map((w) => `<button class="btn" type="button" data-word="${escapeHtml(w)}">${escapeHtml(w)}</button>`)
+      .join("");
+    picks.querySelectorAll("button").forEach((btn) => {
+      btn.onclick = () => socket.emit("pickWord", btn.dataset.word);
+    });
+  } else {
+    pass.hidden = true;
+    picks.hidden = true;
+    picks.innerHTML = "";
+  }
   $("player-list").innerHTML = view.scores
     .map((p) => {
       const you = p.you ? "（你）" : "";

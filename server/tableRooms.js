@@ -1,4 +1,5 @@
 import { makeCode, makeId } from "./rooms.js";
+import { broadcastViews } from "./ioUtil.js";
 import * as gomoku from "../shared/gomoku.js";
 import * as othello from "../shared/othello.js";
 import * as go from "../shared/go.js";
@@ -245,13 +246,10 @@ export function maybeTableAi(room, nsp) {
 }
 
 export function broadcastTable(room, nsp) {
-  for (const p of room.players) {
-    if (p.type !== "human" || !p.socketId) continue;
-    const sock = nsp.sockets.get(p.socketId);
-    if (!sock) continue;
-    if (room.game) sock.emit("state", tableGameView(room, p.playerId));
-    else sock.emit("lobby", tableLobbyView(room, p.playerId));
-  }
+  broadcastViews(nsp, room, (sock, playerId) => {
+    if (room.game) sock.emit("state", tableGameView(room, playerId));
+    else sock.emit("lobby", tableLobbyView(room, playerId));
+  });
 }
 
 export function handleTableDisconnect(room, playerId) {

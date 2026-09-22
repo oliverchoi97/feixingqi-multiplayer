@@ -3,21 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>猜猜畫畫 · Gaming In My Life</title>
+    <title>估數字 · Gaming In My Life</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;800&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/style.css" />
     <link rel="stylesheet" href="/css/portal.css" />
     <link rel="stylesheet" href="/css/danmaku.css" />
     <link rel="stylesheet" href="/css/boards.css" />
+    <link rel="stylesheet" href="/css/party.css" />
     <link rel="stylesheet" href="/css/session.css" />
     <link rel="stylesheet" href="/css/bgm.css" />
   </head>
-  <body>
+  <body data-kind="oneatwob" data-path="/oneatwob">
     <div id="toast" hidden></div>
     <section id="screen-home" class="screen">
       <div class="home-card">
@@ -25,13 +23,10 @@
           <a href="/">遊戲選單</a>
           <a href="/feixingqi">飛行棋</a>
         </nav>
-        <p class="eyebrow">你畫我猜</p>
-        <h1>猜猜畫畫</h1>
-        <p class="lede">一人作畫、其他人猜詞。2 到 6 人連線，沒有電腦。畫布即時同步。</p>
-        <label class="field">
-          <span>暱稱</span>
-          <input id="nickname" maxlength="12" placeholder="怎麼稱呼你" autocomplete="nickname" />
-        </label>
+        <p class="eyebrow">1A2B</p>
+        <h1>估數字</h1>
+        <p class="lede">系統出四位不重複數字，輪流猜。A 是位置對，B 是數字對但位置不對。先 4A 者勝。2–4 人，一人也可對電腦。</p>
+        <label class="field"><span>暱稱</span><input id="nickname" maxlength="12" placeholder="怎麼稱呼你" autocomplete="nickname" /></label>
         <div class="home-actions">
           <button id="btn-create" class="btn primary" type="button">建立房間</button>
           <div class="join-row">
@@ -43,7 +38,7 @@
           <button type="button" class="btn ghost" data-session="end">結束遊戲</button>
           <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
         </div>
-        <p class="hint">畫家看到題目並作畫；其他人在猜題欄輸入。猜中畫家加 1 分、猜中者加 2 分，然後換人。</p>
+        <p class="hint">例如秘密 1234，猜 1356 得 1A1B。</p>
       </div>
     </section>
     <section id="screen-lobby" class="screen" hidden>
@@ -58,12 +53,8 @@
             <button id="btn-leave" class="btn ghost" type="button">離開</button>
           </div>
         </header>
-        <p id="lobby-status">兩人即可開局。畫家每輪從三個詞裡選一題，也可換題或自行新增詞語。</p>
+        <p class="lede tight" id="lobby-status">等人進來就可以開。</p>
         <div id="lobby-seats" class="seats"></div>
-        <div class="join-row" style="margin:12px 0">
-          <input id="custom-word" maxlength="16" placeholder="自行新增詞語" autocomplete="off" />
-          <button id="btn-add-word" class="btn" type="button">加入詞庫</button>
-        </div>
         <div class="lobby-actions">
           <button id="btn-ready" class="btn primary" type="button">準備</button>
           <button id="btn-start" class="btn" type="button" hidden>開始遊戲</button>
@@ -84,32 +75,43 @@
             </div>
             <div id="turn-banner" class="turn-banner">開局</div>
           </div>
+          <p id="clock" class="last-roll" hidden></p>
           <div id="player-list" class="player-list"></div>
-          <div id="word-picks" class="piece-picks" hidden></div>
-          <button id="btn-pass-word" class="btn ghost wide" type="button" hidden>換一題</button>
-          <div class="join-row" style="margin:8px 0">
-            <input id="custom-word-play" maxlength="16" placeholder="自行新增詞語" autocomplete="off" />
-            <button id="btn-add-word-play" class="btn ghost" type="button">加入詞庫</button>
-          </div>
-          <div id="guess-row" class="join-row" hidden>
-            <input id="guess-input" maxlength="24" placeholder="猜這個詞" autocomplete="off" />
-            <button id="btn-guess" class="btn primary" type="button">猜</button>
-          </div>
+          <p id="play-event" class="hint"></p>
           <div class="session-strip">
             <button type="button" class="btn ghost" data-session="end">結束遊戲</button>
             <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
           </div>
         </aside>
-        <div class="draw-wrap">
-          <canvas id="draw" width="720" height="540"></canvas>
-          <div id="draw-tools" class="draw-tools" hidden>
-            <button type="button" class="swatch-btn on" data-color="#2a1f14" style="background:#2a1f14" aria-label="黑"></button>
-            <button type="button" class="swatch-btn" data-color="#9c1c1c" style="background:#9c1c1c" aria-label="紅"></button>
-            <button type="button" class="swatch-btn" data-color="#1a4fd8" style="background:#1a4fd8" aria-label="藍"></button>
-            <button type="button" class="swatch-btn" data-color="#1f8a3a" style="background:#1f8a3a" aria-label="綠"></button>
-            <button type="button" class="swatch-btn" data-color="#c9a227" style="background:#c9a227" aria-label="金"></button>
-            <button type="button" class="swatch-btn" data-color="#ffffff" style="background:#fff" aria-label="擦"></button>
-            <button id="btn-clear" class="btn ghost" type="button">清空</button>
+        <div>
+          <div id="panel-1a2b" hidden>
+            <div id="set-row-1a2b" class="join-row" hidden>
+              <input id="secret-input" maxlength="4" inputmode="numeric" placeholder="四位不重複數字" autocomplete="off" />
+              <button id="btn-set-secret" class="btn primary" type="button">鎖定密碼</button>
+              <button id="btn-random-secret" class="btn" type="button">隨機</button>
+            </div>
+            <div id="guess-row-1a2b" class="join-row" hidden>
+              <input id="guess-input" maxlength="4" inputmode="numeric" placeholder="四位數字" autocomplete="off" />
+              <button id="btn-guess" class="btn primary" type="button">猜</button>
+            </div>
+            <ol id="history-1a2b" class="history-list"></ol>
+          </div>
+          <div id="panel-sea" hidden>
+            <button id="btn-random-fleet" class="btn primary" type="button">隨機佈署並鎖定</button>
+            <p class="eyebrow">己方</p>
+            <div id="sea-own" class="sea-grid"></div>
+            <p class="eyebrow">敵方（點格開火）</p>
+            <div id="sea-foe" class="sea-grid"></div>
+          </div>
+          <div id="panel-slap" hidden>
+            <div id="pile-card" class="pile-card">空</div>
+            <p id="hand-count" class="hint"></p>
+            <button id="btn-play-card" class="btn primary wide" type="button">出牌</button>
+            <button id="btn-slap" class="btn wide" type="button">冚！</button>
+          </div>
+          <div id="panel-maid" hidden>
+            <div id="maid-hand"></div>
+            <button id="btn-draw" class="btn primary wide" type="button">抽左邊一張</button>
           </div>
         </div>
       </div>
@@ -128,7 +130,7 @@
       <button class="btn primary" type="submit">發送</button>
     </form>
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="/js/draw-client.js"></script>
+    <script type="module" src="/js/party-client.js"></script>
     <script type="module" src="/js/bgm.js"></script>
   </body>
 </html>

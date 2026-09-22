@@ -110,11 +110,12 @@ socket.on("joined", (payload) => {
 });
 
 socket.on("lobby", (view) => {
+  const leftPlay = Boolean(game);
   lobby = view;
   game = null;
   readyOn = view.ready;
   $("winner-modal").hidden = true;
-  chatLog.clear();
+  if (leftPlay) chatLog.clear();
   show("lobby");
   renderLobby(view);
 });

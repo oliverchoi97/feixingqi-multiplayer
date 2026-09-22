@@ -16,8 +16,8 @@ describe("board click mapping", () => {
 
   it("round-trips gomoku and go intersections including edges", () => {
     for (const [kind, size, w, h] of [
-      ["gomoku", 15, 640, 640],
-      ["gomoku", 15, 375, 280],
+      ["gomoku", 10, 640, 640],
+      ["gomoku", 10, 375, 280],
       ["go", 9, 412.7, 390],
     ]) {
       const layout = boardLayout(kind, size, w, h);

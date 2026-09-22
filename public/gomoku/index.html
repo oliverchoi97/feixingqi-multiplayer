@@ -24,7 +24,7 @@
         </nav>
         <p class="eyebrow">連五子</p>
         <h1>五子棋</h1>
-        <p class="lede">15×15 無禁手，先連成五子者勝。可兩人連線，或一人對電腦。</p>
+        <p class="lede">10×10 無禁手，先連成五子者勝。可兩人連線，或一人對電腦。</p>
         <label class="field"><span>暱稱</span><input id="nickname" maxlength="12" placeholder="怎麼稱呼你" autocomplete="nickname" /></label>
         <div class="home-actions">
           <button id="btn-create" class="btn primary" type="button">建立房間</button>
@@ -37,7 +37,7 @@
           <button type="button" class="btn ghost" data-session="end">結束遊戲</button>
           <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
         </div>
-        <p class="hint">黑先。直線、橫線或斜線連續五子即勝，沒有禁手。</p>
+        <p class="hint">黑先。10×10 棋盤，直線、橫線或斜線連續五子即勝，沒有禁手。</p>
       </div>
     </section>
     <section id="screen-lobby" class="screen" hidden>
@@ -82,7 +82,7 @@
           </div>
         </aside>
         <div>
-          <div class="board-canvas-wrap">
+          <div class="board-canvas-wrap gomoku">
             <canvas id="board" width="720" height="720"></canvas>
           </div>
           <div id="ttt" class="ttt-grid" hidden>
