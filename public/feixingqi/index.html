@@ -82,6 +82,7 @@
     </section>
 
     <section id="screen-game" class="screen game-screen" hidden>
+      <div id="board-hud" class="game-turnbar" aria-live="polite"></div>
       <aside class="panel">
         <div class="panel-top">
           <div>
@@ -108,9 +109,7 @@
           <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
         </div>
       </aside>
-      <div class="board-col">
-        <div id="board-hud" class="board-hud" aria-live="polite"></div>
-        <div class="board-wrap">
+      <div class="board-wrap">
         <img class="board-art" src="/board.svg" alt="飛行棋棋盤" />
         <canvas id="board" width="950" height="950"></canvas>
         <div id="center-dice" class="center-dice" data-mode="off" aria-hidden="true">
@@ -127,7 +126,6 @@
             </div>
             <p id="center-die-hint" class="center-die-hint">向上滑動擲骰</p>
           </div>
-        </div>
         </div>
       </div>
     </section>
