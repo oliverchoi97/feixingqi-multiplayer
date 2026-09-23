@@ -186,7 +186,7 @@ export function applyShot(game, playerId, { x, y }) {
     game.winner = { playerId, name: seat.name };
     return { ok: true, hit: true, sunk: game.lastShot.sunk, win: true };
   }
-  game.turn = 1 - game.turn;
+  if (hit !== 2) game.turn = 1 - game.turn;
   game.shotEndsAt = Date.now() + SHOT_MS;
   return { ok: true, hit: hit === 2, sunk: game.lastShot.sunk, win: false };
 }

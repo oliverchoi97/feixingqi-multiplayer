@@ -42,7 +42,7 @@ describe("1A2B", () => {
 });
 
 describe("battleship", () => {
-  it("has two 2-cell ships, one shot per turn, and reports a sunk ship", () => {
+  it("keeps the turn after hits, switches only on a miss, and reports a sunk ship", () => {
     const g = battleship.createGame(two());
     assert.equal(g.phase, "place");
     assert.equal(battleship.SHIPS.length, 6);
@@ -61,14 +61,22 @@ describe("battleship", () => {
     const first = battleship.applyShot(g, "h", { x: 0, y: 0 });
     assert.equal(first.ok, true);
     assert.equal(first.hit, true);
+    assert.equal(g.seats[g.turn].playerId, "h");
+    const second = battleship.applyShot(g, "h", { x: 1, y: 0 });
+    assert.equal(second.ok, true);
+    assert.equal(second.hit, true);
+    assert.equal(g.seats[g.turn].playerId, "h");
+    const missShot = battleship.applyShot(g, "h", { x: 9, y: 9 });
+    assert.equal(missShot.ok, true);
+    assert.equal(missShot.hit, false);
     assert.equal(g.seats[g.turn].playerId, "g");
-    assert.equal(battleship.applyShot(g, "h", { x: 1, y: 0 }).ok, false);
-    battleship.applyShot(g, "g", { x: 9, y: 9 });
+    assert.equal(battleship.applyShot(g, "h", { x: 2, y: 0 }).ok, false);
+    battleship.applyShot(g, "g", { x: 8, y: 9 });
     assert.equal(g.seats[g.turn].playerId, "h");
     const cells = [];
     for (let y = 0; y < 6; y++) {
       for (let x = 0; x < battleship.SHIPS[y].len; x++) {
-        if (y === 0 && x === 0) continue;
+        if (y === 0 && x < 2) continue;
         cells.push({ x, y });
       }
     }
@@ -77,7 +85,7 @@ describe("battleship", () => {
     for (const cell of cells) {
       if (g.phase === "ended") break;
       if (g.seats[g.turn].playerId !== "h") {
-        battleship.applyShot(g, "g", { x: miss % 10, y: 8 - Math.floor(miss / 10) });
+        battleship.applyShot(g, "g", { x: miss % 8, y: 8 - Math.floor(miss / 8) });
         miss += 1;
       }
       last = battleship.applyShot(g, "h", cell);

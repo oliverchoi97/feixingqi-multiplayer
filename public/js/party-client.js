@@ -149,7 +149,7 @@ function lobbyHint(view) {
   if (view.canStart) return "可以開局。";
   if (KIND === "hammintoi") return `至少 ${view.min} 人連線。空位不會由電腦補上。`;
   if (KIND === "oldmaid") return "預設四人。一人也可開，空位由電腦補上。按住對方的牌凸起，鬆手或點一下抽走。";
-  if (KIND === "battleship") return "兩人對戰。一人也可開，空位由電腦補上。佈署 60 秒；每回合只能開一炮。";
+  if (KIND === "battleship") return "兩人對戰。一人也可開，空位由電腦補上。佈署 60 秒。打中可連射，打空才換邊。";
   return "每人各自設定四位密碼，再輪流猜下一家。每回合一人猜一次。一人對電腦也是互猜。";
 }
 
@@ -190,7 +190,7 @@ function playBanner(view) {
     return view.youReady ? "等待對手鎖定陣形" : "佈署艦艇（60 秒）";
   }
   if (view.kind === "battleship" && view.phase === "shot") {
-    return view.yourTurn ? "開一炮（30 秒）" : "對方正在瞄準（30 秒）";
+    return view.yourTurn ? "開火（打中可連射，30 秒）" : "對方正在瞄準（30 秒）";
   }
   if (view.kind === "oldmaid" && view.probe?.fromId && view.target?.you) {
     return `${view.probe.byName || "對手"} 正在抽你的牌`;

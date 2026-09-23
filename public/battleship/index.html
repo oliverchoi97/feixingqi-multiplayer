@@ -25,7 +25,7 @@
         </nav>
         <p class="eyebrow">BATTLESHIP</p>
         <h1>海戰棋</h1>
-        <p class="lede">10×10 海域。佈署 60 秒。艦隊含兩艘兩格小艇。每回合只能開一炮，打完換對手。命中與擊沉都有炮轟／爆炸效果。</p>
+        <p class="lede">10×10 海域。佈署 60 秒。艦隊含兩艘兩格小艇。打中可繼續開炮，沒有連射上限；打空才換對手。命中與擊沉都有炮轟／爆炸效果。</p>
         <label class="field"><span>暱稱</span><input id="nickname" maxlength="12" placeholder="怎麼稱呼你" autocomplete="nickname" /></label>
         <div class="home-actions">
           <button id="btn-create" class="btn primary" type="button">建立房間</button>
@@ -38,7 +38,7 @@
           <button type="button" class="btn ghost" data-session="end">結束遊戲</button>
           <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
         </div>
-        <p class="hint">艦型：5、4、3、3、2、2。一炮換邊；超時由系統隨機開火。</p>
+        <p class="hint">艦型：5、4、3、3、2、2。打中連射、打空換邊；超時由系統隨機開火。</p>
       </div>
     </section>
     <section id="screen-lobby" class="screen" hidden>
@@ -100,7 +100,7 @@
             <button id="btn-random-fleet" class="btn primary" type="button">隨機佈署並鎖定</button>
             <p class="eyebrow">己方艦隊</p>
             <div id="sea-own" class="sea-grid"></div>
-            <p class="eyebrow">敵方海域（每回合一炮）</p>
+            <p class="eyebrow">敵方海域（打中可連射）</p>
             <div id="sea-foe" class="sea-grid"></div>
             <div id="sea-fx" class="sea-fx" hidden></div>
           </div>
