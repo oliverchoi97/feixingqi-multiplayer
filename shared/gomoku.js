@@ -157,8 +157,8 @@ export function publicView(game, viewerId) {
     reason: game.reason,
     last: game.last,
     size: SIZE,
-    yourSide: you?.side ?? 0,
-    yourTurn: game.phase === "playing" && you?.side === game.turn,
+    yourSide: you?.type === "human" ? you.side : you?.side ?? 0,
+    yourTurn: game.phase === "playing" && you?.type !== "ai" && you?.side === game.turn,
     seats: game.seats.map((s) => ({
       side: s.side,
       name: s.name,

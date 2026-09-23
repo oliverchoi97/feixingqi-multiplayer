@@ -4,9 +4,11 @@ import {
   createTableRoom,
   endTableMatch,
   handleTableMove,
+  isTableAiTurn,
   joinTableRoom,
   setTableReady,
   startTableGame,
+  tableGameView,
   tableLobbyView,
 } from "./tableRooms.js";
 
@@ -14,10 +16,16 @@ describe("table rooms", () => {
   it("lets one human start vs AI and abort back to lobby", () => {
     const room = createTableRoom("gomoku", { playerId: "h", nickname: "甲", socketId: "s1" });
     assert.equal(tableLobbyView(room, "h").phase, "lobby");
-    setTableReady(room, "h", true);
     const started = startTableGame(room);
     assert.equal(started.ok, true);
     assert.equal(room.players.filter((p) => p.type === "ai").length, 1);
+    assert.equal(room.game.seats.find((s) => s.side === 1).type, "human");
+    assert.equal(isTableAiTurn(room), false);
+    const view = tableGameView(room, "h");
+    assert.equal(view.yourTurn, true);
+    assert.equal(view.yourSide, 1);
+    room.players[0].connected = false;
+    assert.equal(isTableAiTurn(room), false);
     const move = handleTableMove(room, "h", { x: 7, y: 7 });
     assert.equal(move.ok, true);
     endTableMatch(room);

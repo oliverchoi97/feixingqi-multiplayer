@@ -100,15 +100,16 @@ export function setTableReady(room, playerId, ready) {
 export function startTableGame(room) {
   if (room.game) return { ok: false, error: "對局已經開始" };
   const spec = TABLE_GAMES[room.kind];
+  room.players = room.players.filter((p) => p.type === "human");
   const humans = room.players.filter((p) => p.type === "human");
   if (!humans.length) return { ok: false, error: "至少需要一名玩家" };
-  if (!humans.every((p) => p.ready)) return { ok: false, error: "每位玩家都要準備" };
+  for (const p of humans) {
+    p.type = "human";
+    p.connected = true;
+  }
 
-  room.players = room.players.filter((p) => p.type === "human");
-  if (room.players.filter((p) => p.type === "human").length < 2) {
-    const usedSides = new Set();
-    room.players[0].side = 1;
-    usedSides.add(1);
+  if (humans.length < 2) {
+    humans[0].side = 1;
     room.players.push({
       playerId: `ai-${room.code}`,
       nickname: "電腦",
@@ -119,8 +120,8 @@ export function startTableGame(room) {
       side: 2,
     });
   } else {
-    room.players[0].side = 1;
-    room.players[1].side = 2;
+    humans[0].side = 1;
+    humans[1].side = 2;
   }
 
   const seats = [1, 2].map((side) => {
@@ -148,7 +149,7 @@ export function tableLobbyView(room, viewerId) {
     phase: room.game ? room.game.phase : "lobby",
     isHost: you?.playerId === room.hostId,
     ready: you?.ready ?? false,
-    canStart: humans.length > 0 && humans.every((p) => p.ready) && !room.game,
+    canStart: humans.filter((p) => p.connected).length > 0 && !room.game,
     players: room.players
       .filter((p) => p.type === "human")
       .map((p) => ({
@@ -184,10 +185,7 @@ export function handleTableMove(room, playerId, payload) {
 export function isTableAiTurn(room) {
   if (!room.game || room.game.phase !== "playing") return false;
   const seat = room.game.seats.find((s) => s.side === room.game.turn);
-  if (!seat) return false;
-  if (seat.type === "ai") return true;
-  const player = room.players.find((p) => p.playerId === seat.playerId);
-  return player && !player.connected;
+  return Boolean(seat && seat.type === "ai");
 }
 
 export function scheduleTable(room, fn, ms) {

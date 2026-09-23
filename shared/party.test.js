@@ -16,40 +16,59 @@ describe("1A2B", () => {
     assert.deepEqual(oneatwob.scoreGuess("1234", "1234"), { a: 4, b: 0 });
   });
 
-  it("lets the setter lock a secret then others guess", () => {
+  it("lets both humans set a secret then guess each other once per turn", () => {
     const g = oneatwob.createGame(two(), null);
     assert.equal(g.phase, "set");
     assert.equal(oneatwob.applySecret(g, "h", { secret: "9876" }).ok, true);
+    assert.equal(g.phase, "set");
+    assert.equal(oneatwob.applySecret(g, "g", { secret: "1234" }).ok, true);
     assert.equal(g.phase, "playing");
-    assert.equal(oneatwob.applyGuess(g, "h", "1234").ok, false);
-    const miss = oneatwob.applyGuess(g, "g", "1234");
+    assert.equal(g.turn, 0);
+    const miss = oneatwob.applyGuess(g, "h", "1356");
     assert.equal(miss.ok, true);
     assert.equal(miss.win, false);
-    const win = oneatwob.applyGuess(g, "g", "9876");
+    assert.equal(miss.targetId, "g");
+    assert.equal(g.turn, 1);
+    assert.equal(oneatwob.applyGuess(g, "h", "1234").ok, false);
+    const reply = oneatwob.applyGuess(g, "g", "1357");
+    assert.equal(reply.ok, true);
+    assert.equal(reply.targetId, "h");
+    assert.equal(g.turn, 0);
+    const win = oneatwob.applyGuess(g, "h", "1234");
     assert.equal(win.ok, true);
     assert.equal(win.win, true);
+    assert.equal(g.winner.playerId, "h");
   });
 });
 
 describe("battleship", () => {
-  it("sinks the fleet when every ship cell is hit", () => {
+  it("has two 2-cell ships, one shot per turn, and reports a sunk ship", () => {
     const g = battleship.createGame(two());
     assert.equal(g.phase, "place");
-    assert.equal(battleship.PLACE_MS, 60_000);
-    assert.equal(battleship.SHOT_MS, 30_000);
+    assert.equal(battleship.SHIPS.length, 6);
+    assert.equal(battleship.SHIPS.filter((s) => s.len === 2).length, 2);
     const fleet = [
       { x: 0, y: 0, horiz: true },
       { x: 0, y: 1, horiz: true },
       { x: 0, y: 2, horiz: true },
       { x: 0, y: 3, horiz: true },
       { x: 0, y: 4, horiz: true },
+      { x: 0, y: 5, horiz: true },
     ];
     assert.equal(battleship.applyPlace(g, "h", fleet).ok, true);
     assert.equal(battleship.applyPlace(g, "g", fleet).ok, true);
     assert.equal(g.phase, "shot");
+    const first = battleship.applyShot(g, "h", { x: 0, y: 0 });
+    assert.equal(first.ok, true);
+    assert.equal(first.hit, true);
+    assert.equal(g.seats[g.turn].playerId, "g");
+    assert.equal(battleship.applyShot(g, "h", { x: 1, y: 0 }).ok, false);
+    battleship.applyShot(g, "g", { x: 9, y: 9 });
+    assert.equal(g.seats[g.turn].playerId, "h");
     const cells = [];
-    for (let y = 0; y < 5; y++) {
-      for (let x = 0; x < (y === 4 ? 2 : y === 1 ? 4 : y === 0 ? 5 : 3); x++) {
+    for (let y = 0; y < 6; y++) {
+      for (let x = 0; x < battleship.SHIPS[y].len; x++) {
+        if (y === 0 && x === 0) continue;
         cells.push({ x, y });
       }
     }
@@ -58,13 +77,14 @@ describe("battleship", () => {
     for (const cell of cells) {
       if (g.phase === "ended") break;
       if (g.seats[g.turn].playerId !== "h") {
-        battleship.applyShot(g, "g", { x: miss % 10, y: 9 - Math.floor(miss / 10) });
+        battleship.applyShot(g, "g", { x: miss % 10, y: 8 - Math.floor(miss / 10) });
         miss += 1;
       }
       last = battleship.applyShot(g, "h", cell);
     }
     assert.equal(g.phase, "ended");
     assert.equal(last.win, true);
+    assert.ok(last.sunk);
     assert.equal(g.winner.playerId, "h");
   });
 });
@@ -92,5 +112,25 @@ describe("抽烏龜", () => {
     const total = seats.reduce((n, s) => n + g.hands[s.playerId].length, 0);
     assert.equal(total % 2, 1);
     assert.ok(g.maidId.includes("Q"));
+  });
+
+  it("lets the current player pick a specific card and shows the probe to the victim", () => {
+    const seats = two();
+    const g = oldmaid.createGame(seats, () => 0.2);
+    const turnId = g.seats[g.turn].playerId;
+    const left = oldmaid.leftPlayer(g, g.turn);
+    const before = g.hands[left.playerId].length;
+    assert.ok(before > 0);
+    const pick = Math.min(1, before - 1);
+    assert.equal(oldmaid.setProbe(g, turnId, pick).probed, true);
+    assert.equal(g.probe.index, pick);
+    assert.equal(g.probe.fromId, left.playerId);
+    const victim = oldmaid.publicView(g, left.playerId);
+    assert.equal(victim.probe.index, pick);
+    assert.equal(victim.target.you, true);
+    const drawn = oldmaid.drawFrom(g, turnId, pick);
+    assert.equal(drawn.ok, true);
+    assert.equal(g.hands[left.playerId].length, before - 1);
+    assert.equal(g.probe, null);
   });
 });

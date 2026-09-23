@@ -55,8 +55,14 @@ $("btn-copy").onclick = async () => {
 $("btn-leave").onclick = () => location.assign(PATH);
 $("btn-pass")?.addEventListener("click", () => socket.emit("move", { pass: true }));
 
+function canPlaceStone(view) {
+  if (!view || view.phase !== "playing") return false;
+  if (view.yourTurn) return true;
+  return Boolean(view.yourSide && view.yourSide === view.turn);
+}
+
 canvas.addEventListener("click", (e) => {
-  if (!game?.yourTurn || game.phase !== "playing") return;
+  if (!canPlaceStone(game)) return;
   const { px, py } = eventOffset(canvas, e);
   const hit = hitCell(layout, px, py);
   if (!hit) return;
@@ -164,9 +170,9 @@ function renderLobby(view) {
   $("btn-start").disabled = !view.canStart;
   $("lobby-status").textContent = view.canStart
     ? view.players.length < 2
-      ? "你已準備。開局後空位由電腦執白。"
-      : "雙方已準備，可以開局。"
-    : "準備後開局；若只有一人，空位由電腦補上。";
+      ? "可以開局。空位由電腦執白；你執黑，由你落子。"
+      : "可以開局。雙方都由自己落子。"
+    : "等人進來，或直接開局與電腦對弈。";
   $("lobby-seats").innerHTML = view.players
     .map((p) => {
       const tag = p.you ? "你" : p.connected ? "在線" : "離線";

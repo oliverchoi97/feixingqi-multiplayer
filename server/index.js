@@ -1019,6 +1019,7 @@ partyNsp.on("connection", (socket) => {
       return;
     }
     broadcastParty(room, partyNsp);
+    if (result.probed) return;
     armPartyTimers(room, partyNsp);
     if (isPartyAiTurn(room)) maybePartyAi(room, partyNsp);
   });

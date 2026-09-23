@@ -25,7 +25,7 @@
         </nav>
         <p class="eyebrow">OLD MAID</p>
         <h1>抽烏龜</h1>
-        <p class="lede">抽出黑桃 Q 當烏龜。對子自動丟掉，回合中從左邊抽一張。最後手上還有牌的人就是烏龜。預設四人，空位由電腦補上。</p>
+        <p class="lede">抽出黑桃 Q 當烏龜。對子自動丟掉。輪到你時按住對方一張牌讓它凸起，鬆手或點一下就抽走；對方看得到你選哪張。最後留牌者輸。</p>
         <label class="field"><span>暱稱</span><input id="nickname" maxlength="12" placeholder="怎麼稱呼你" autocomplete="nickname" /></label>
         <div class="home-actions">
           <button id="btn-create" class="btn primary" type="button">建立房間</button>
@@ -38,7 +38,7 @@
           <button type="button" class="btn ghost" data-session="end">結束遊戲</button>
           <button type="button" class="btn ghost" data-session="menu">回到主選單</button>
         </div>
-        <p class="hint">把對子丟光就安全過關。</p>
+        <p class="hint">預設四人，空位由電腦補上。抽哪一張由你選，不是固定最左邊。</p>
       </div>
     </section>
     <section id="screen-lobby" class="screen" hidden>
@@ -110,8 +110,13 @@
             <button id="btn-slap" class="btn wide" type="button">冚！</button>
           </div>
           <div id="panel-maid" hidden>
+            <div id="maid-target">
+              <p class="eyebrow">對方手牌</p>
+              <div class="maid-backs"></div>
+            </div>
+            <p class="eyebrow">你的手牌</p>
             <div id="maid-hand"></div>
-            <button id="btn-draw" class="btn primary wide" type="button">抽左邊一張</button>
+            <button id="btn-draw" class="btn primary wide" type="button" hidden>抽一張</button>
           </div>
         </div>
       </div>

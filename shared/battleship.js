@@ -9,6 +9,7 @@ export const SHIPS = [
   { id: "cruiser", name: "巡洋艦", len: 3 },
   { id: "sub", name: "潛艇", len: 3 },
   { id: "destroyer", name: "驅逐艦", len: 2 },
+  { id: "patrol", name: "巡邏艇", len: 2 },
 ];
 
 export function idx(x, y) {
@@ -136,6 +137,27 @@ export function lockUnready(game) {
   maybeStartShots(game);
 }
 
+export function shipCells(ship) {
+  const cells = [];
+  for (let i = 0; i < ship.len; i++) {
+    cells.push({
+      x: ship.horiz ? ship.x + i : ship.x,
+      y: ship.horiz ? ship.y : ship.y + i,
+    });
+  }
+  return cells;
+}
+
+export function sunkShip(theirs, shots, x, y) {
+  const mark = theirs.grid[idx(x, y)];
+  if (!mark) return null;
+  const ship = theirs.ships[mark - 1];
+  if (!ship) return null;
+  const cells = shipCells(ship);
+  if (!cells.every((c) => shots[idx(c.x, c.y)] === 2)) return null;
+  return ship;
+}
+
 export function applyShot(game, playerId, { x, y }) {
   if (game.phase !== "shot") return { ok: false, error: "現在不能開火" };
   const seat = game.seats[game.turn];
@@ -150,15 +172,23 @@ export function applyShot(game, playerId, { x, y }) {
   if (mine.shots[i]) return { ok: false, error: "這裡打過了" };
   const hit = theirs.grid[i] ? 2 : 1;
   mine.shots[i] = hit;
-  game.lastShot = { x: px, y: py, hit: hit === 2, by: playerId };
+  const sunk = hit === 2 ? sunkShip(theirs, mine.shots, px, py) : null;
+  game.lastShot = {
+    x: px,
+    y: py,
+    hit: hit === 2,
+    by: playerId,
+    byName: seat.name,
+    sunk: sunk ? { id: sunk.id, name: sunk.name, len: sunk.len } : null,
+  };
   if (hit === 2 && allSunk(theirs.grid, mine.shots)) {
     game.phase = "ended";
     game.winner = { playerId, name: seat.name };
-    return { ok: true, hit: true, win: true };
+    return { ok: true, hit: true, sunk: game.lastShot.sunk, win: true };
   }
   game.turn = 1 - game.turn;
   game.shotEndsAt = Date.now() + SHOT_MS;
-  return { ok: true, hit: hit === 2, win: false };
+  return { ok: true, hit: hit === 2, sunk: game.lastShot.sunk, win: false };
 }
 
 function allSunk(grid, shots) {
@@ -197,7 +227,13 @@ export function publicView(game, viewerId) {
     shotEndsAt: game.shotEndsAt,
     lastShot: game.lastShot,
     winner: game.winner,
-    own: mine ? { grid: mine.grid.slice(), shots: mine.shots.slice() } : null,
+    own: mine
+      ? {
+          grid: mine.grid.slice(),
+          shots: mine.shots.slice(),
+          ships: (mine.ships || []).map((s) => ({ ...s })),
+        }
+      : null,
     foeShots: theirs ? theirs.shots.slice() : emptyGrid(),
     seats: game.seats.map((s, i) => ({
       name: s.name,

@@ -1,4 +1,4 @@
-/** 估數字 / 1A2B：四位不重複數字。兩人以上時由一位玩家出題，其餘人猜。 */
+/** 估數字 / 1A2B：四位不重複數字。兩人以上各自出題、互猜；一人對電腦則雙方各有一組密碼。 */
 
 export const DIGITS = 4;
 export const MIN_PLAYERS = 2;
@@ -31,98 +31,136 @@ export function scoreGuess(secret, guess) {
   return { a, b };
 }
 
-export function firstGuesser(game) {
-  const i = game.seats.findIndex((s) => s.playerId !== game.setterId);
-  return i < 0 ? 0 : i;
-}
-
-export function nextGuesser(game, from) {
+export function targetOf(game, fromIndex = game.turn) {
   const n = game.seats.length;
-  for (let i = 1; i <= n; i++) {
-    const idx = (from + i) % n;
-    if (game.seats[idx].playerId !== game.setterId) return idx;
-  }
-  return from;
+  if (n < 2) return game.seats[0] || null;
+  return game.seats[(fromIndex + 1) % n];
 }
 
-export function createGame(seats, secret = null) {
-  const humans = seats.filter((s) => s.type === "human");
-  const setterId = !secret && humans.length >= 2 ? humans[0].playerId : null;
+export function nextTurn(game, from) {
+  return (from + 1) % game.seats.length;
+}
+
+function allSecretsReady(game) {
+  return game.seats.every((s) => game.secrets[s.playerId]);
+}
+
+export function createGame(seats, _secret = null, rng = Math.random) {
+  const secrets = {};
+  for (const s of seats) {
+    if (s.type === "ai") secrets[s.playerId] = randomSecret(rng);
+  }
   const game = {
     kind: "oneatwob",
-    phase: setterId ? "set" : "playing",
-    secret: secret || null,
-    setterId,
+    phase: "set",
+    secrets,
+    setterId: null,
     seats,
     turn: 0,
     history: [],
     winner: null,
+    lastEvent: "每人先悄悄設定一組四位不重複數字，再輪流猜下一家。",
   };
-  if (!setterId && !game.secret) game.secret = randomSecret();
-  if (game.phase === "playing") game.turn = firstGuesser(game);
+  if (allSecretsReady(game)) {
+    game.phase = "playing";
+    game.turn = 0;
+    game.lastEvent = "開始互猜。每回合一人猜一次下一家的密碼。";
+  }
   return game;
 }
 
 export function applySecret(game, playerId, payload) {
   if (game.phase !== "set") return { ok: false, error: "現在不能出題" };
-  if (playerId !== game.setterId) return { ok: false, error: "只有出題者可以設定密碼" };
+  const seat = game.seats.find((s) => s.playerId === playerId);
+  if (!seat) return { ok: false, error: "你不在這局" };
+  if (game.secrets[playerId]) return { ok: false, error: "你已經鎖定密碼" };
   if (payload?.random) {
-    game.secret = randomSecret();
+    game.secrets[playerId] = randomSecret();
   } else {
     const raw = payload?.secret ?? payload?.guess ?? payload;
     const parsed = parseGuess(raw);
     if (!parsed.ok) return parsed;
-    game.secret = parsed.guess;
+    game.secrets[playerId] = parsed.guess;
   }
-  game.phase = "playing";
-  game.turn = firstGuesser(game);
+  if (allSecretsReady(game)) {
+    game.phase = "playing";
+    game.turn = 0;
+    game.lastEvent = "全員鎖定。開始互猜，每回合一人猜一次。";
+  } else {
+    const pending = game.seats.filter((s) => !game.secrets[s.playerId]).map((s) => s.name);
+    game.lastEvent = `${seat.name} 已鎖定。還等 ${pending.join("、")}`;
+  }
   return { ok: true };
 }
 
 export function applyGuess(game, playerId, raw) {
-  if (game.phase !== "playing") return { ok: false, error: game.phase === "set" ? "等出題者鎖定密碼" : "對局已結束" };
+  if (game.phase !== "playing") return { ok: false, error: game.phase === "set" ? "等大家鎖定密碼" : "對局已結束" };
   const seat = game.seats[game.turn];
   if (!seat || seat.playerId !== playerId) return { ok: false, error: "還沒輪到你" };
-  if (playerId === game.setterId) return { ok: false, error: "出題者不能猜" };
+  const target = targetOf(game, game.turn);
+  if (!target || target.playerId === playerId) return { ok: false, error: "沒有可猜的對手" };
+  const secret = game.secrets[target.playerId];
+  if (!secret) return { ok: false, error: "對手還沒設密碼" };
   const parsed = parseGuess(raw);
   if (!parsed.ok) return parsed;
-  const { a, b } = scoreGuess(game.secret, parsed.guess);
-  const entry = { playerId, name: seat.name, guess: parsed.guess, a, b };
+  const { a, b } = scoreGuess(secret, parsed.guess);
+  const entry = {
+    playerId,
+    name: seat.name,
+    targetId: target.playerId,
+    targetName: target.name,
+    guess: parsed.guess,
+    a,
+    b,
+  };
   game.history.push(entry);
+  game.lastEvent = `${seat.name} 猜 ${target.name}　${parsed.guess}　${a}A${b}B`;
   if (a === DIGITS) {
     game.phase = "ended";
     game.winner = { playerId, name: seat.name };
+    game.lastEvent = `${seat.name} 猜中 ${target.name} 的密碼`;
     return { ok: true, ...entry, win: true };
   }
-  game.turn = nextGuesser(game, game.turn);
+  game.turn = nextTurn(game, game.turn);
   return { ok: true, ...entry, win: false };
 }
 
 export function pickAiGuess(game) {
-  for (let n = 0; n < 50; n++) {
+  const seat = game.seats[game.turn];
+  const target = targetOf(game, game.turn);
+  const used = new Set(
+    game.history.filter((h) => h.playerId === seat?.playerId && h.targetId === target?.playerId).map((h) => h.guess)
+  );
+  for (let n = 0; n < 80; n++) {
     const g = randomSecret();
-    if (!game.history.some((h) => h.guess === g)) return g;
+    if (!used.has(g)) return g;
   }
   return randomSecret();
 }
 
 export function publicView(game, viewerId) {
   const you = game.seats.find((s) => s.playerId === viewerId);
-  const setter = game.seats.find((s) => s.playerId === game.setterId);
+  const pending = game.seats.filter((s) => !game.secrets[s.playerId]);
+  const target = game.phase === "playing" ? targetOf(game, game.turn) : you ? targetOf(game, game.seats.indexOf(you)) : null;
   return {
     kind: "oneatwob",
     phase: game.phase,
     turn: game.turn,
     history: game.history.slice(-24),
     winner: game.winner,
-    setterName: setter?.name || null,
-    yourSet: Boolean(game.setterId && viewerId === game.setterId),
+    lastEvent: game.lastEvent,
+    setterName: null,
+    yourSet: game.phase === "set" && Boolean(you) && !game.secrets[you.playerId],
+    youLocked: Boolean(you && game.secrets[you.playerId]),
+    pendingNames: pending.map((s) => s.name),
+    targetName: target?.name || null,
     yourTurn: game.phase === "playing" && you && game.seats[game.turn]?.playerId === viewerId,
     seats: game.seats.map((s, i) => ({
       name: s.name,
       type: s.type,
       you: s.playerId === viewerId,
-      setter: s.playerId === game.setterId,
+      setter: false,
+      locked: Boolean(game.secrets[s.playerId]),
       active: i === game.turn && game.phase === "playing",
     })),
   };

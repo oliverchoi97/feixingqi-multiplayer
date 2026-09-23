@@ -137,11 +137,7 @@ export function startPartyGame(room) {
     name: p.nickname,
     type: p.type,
   }));
-  if (spec.kind === "oneatwob") {
-    const humanCount = seats.filter((s) => s.type === "human").length;
-    const secret = humanCount >= 2 ? null : spec.engine.randomSecret();
-    room.game = spec.engine.createGame(seats, secret);
-  } else room.game = spec.engine.createGame(seats);
+  room.game = spec.engine.createGame(seats);
   room.chatLog = [];
   return { ok: true };
 }
@@ -204,7 +200,13 @@ export function handlePartyMove(room, playerId, payload) {
     }
     return spec.engine.playCard(g, playerId);
   }
-  if (spec.kind === "oldmaid") return spec.engine.drawFromLeft(g, playerId);
+  if (spec.kind === "oldmaid") {
+    if (payload && Object.prototype.hasOwnProperty.call(payload, "probe")) {
+      return spec.engine.setProbe(g, playerId, payload.probe);
+    }
+    if (payload?.index != null && payload.index !== "") return spec.engine.drawFrom(g, playerId, payload.index);
+    return spec.engine.drawFromLeft(g, playerId);
+  }
   return { ok: false, error: "未知動作" };
 }
 
@@ -212,8 +214,7 @@ export function isPartyAiTurn(room) {
   if (!room.game || room.game.phase === "ended" || room.game.phase === "lobby") return false;
   const spec = PARTY_GAMES[room.kind];
   if (spec.kind === "oneatwob" && room.game.phase === "set") {
-    const setter = room.players.find((p) => p.playerId === room.game.setterId);
-    return Boolean(setter && (setter.type === "ai" || !setter.connected));
+    return room.game.seats.some((s) => s.type === "ai" && !room.game.secrets[s.playerId]);
   }
   if (spec.kind === "battleship" && room.game.phase === "place") {
     return room.players.some((p) => p.type === "ai" && !room.game.boards[p.playerId]?.ready);
@@ -245,7 +246,11 @@ export function partyAiAct(room, nsp) {
       return;
     }
     if (spec.kind === "oneatwob" && room.game.phase === "set") {
-      spec.engine.applySecret(room.game, room.game.setterId, { random: true });
+      for (const s of room.game.seats) {
+        if (s.type === "ai" && !room.game.secrets[s.playerId]) {
+          spec.engine.applySecret(room.game, s.playerId, { random: true });
+        }
+      }
       broadcastParty(room, nsp);
       if (isPartyAiTurn(room)) partyAiAct(room, nsp);
       return;
@@ -254,6 +259,22 @@ export function partyAiAct(room, nsp) {
     if (!seat) return;
     const human = room.players.find((p) => p.playerId === seat.playerId);
     if (seat.type !== "ai" && human?.connected && !isPartyAiTurn(room)) return;
+    if (spec.kind === "oldmaid") {
+      const left = spec.engine.leftPlayer(room.game, room.game.turn);
+      const from = room.game.hands[left.playerId] || [];
+      const index = from.length ? Math.floor(Math.random() * from.length) : 0;
+      spec.engine.setProbe(room.game, seat.playerId, index);
+      broadcastParty(room, nsp);
+      room.busy = true;
+      scheduleParty(room, () => {
+        room.busy = false;
+        if (!room.game || room.game.phase === "ended") return;
+        handlePartyMove(room, seat.playerId, { index });
+        broadcastParty(room, nsp);
+        if (isPartyAiTurn(room)) partyAiAct(room, nsp);
+      }, 700);
+      return;
+    }
     let payload = {};
     if (spec.kind === "oneatwob") payload = { guess: spec.engine.pickAiGuess(room.game) };
     else if (spec.kind === "battleship") payload = spec.engine.pickAiShot(room.game, seat.playerId);

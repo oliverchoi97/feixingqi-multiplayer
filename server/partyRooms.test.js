@@ -18,17 +18,20 @@ describe("party rooms", () => {
     assert.ok(view.players.some((p) => p.name === "乙"));
   });
 
-  it("lets two humans start 1A2B with a setter phase", () => {
+  it("lets two humans each set a secret then take turns guessing", () => {
     const room = createPartyRoom("oneatwob", { playerId: "h", nickname: "甲", socketId: "s1" });
     joinPartyRoom(room, { playerId: "g", nickname: "乙", socketId: "s2" });
     assert.equal(startPartyGame(room).ok, true);
     assert.equal(room.game.phase, "set");
     assert.equal(handlePartyMove(room, "h", { secret: "1234" }).ok, true);
+    assert.equal(room.game.phase, "set");
+    assert.equal(handlePartyMove(room, "g", { secret: "5678" }).ok, true);
     assert.equal(room.game.phase, "playing");
-    const guess = handlePartyMove(room, "g", { guess: "1356" });
+    const guess = handlePartyMove(room, "h", { guess: "5609" });
     assert.equal(guess.ok, true);
-    assert.equal(guess.a, 1);
-    assert.equal(guess.b, 1);
+    assert.equal(guess.a, 2);
+    assert.equal(guess.b, 0);
+    assert.equal(guess.targetId, "g");
   });
 
   it("fills old maid to four seats with AI, and never fills 冚棉胎", () => {
